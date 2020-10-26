@@ -5,7 +5,7 @@ from mesa.visualization.ModularVisualization import ModularServer
 
 def agent_portrayal(agent):
     colours = ["blue", "black", "red"]
-    if type(agent) is WorkerAnt:
+    if isinstance(agent, Ant):
         portrayal = {"Shape": "circle",
                      "Filled": "true",
                      "Layer": 0,
@@ -27,11 +27,11 @@ def agent_portrayal(agent):
     return portrayal
 
 
-model = AntsWorld(3, 20, 20)
-map = CanvasGrid(agent_portrayal, 50, 50)
+width = height = 50
+map = CanvasGrid(agent_portrayal, width, height)
 server = ModularServer(AntsWorld,
                        [map],
                        "Ants World",
-                       {"N_species": 3, "width": 50, "height": 50})
+                       {"N_species": 3, "width": width, "height": height})
 server.port = 8521  # The default
 server.launch()

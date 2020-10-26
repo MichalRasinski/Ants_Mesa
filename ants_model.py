@@ -28,19 +28,18 @@ class Ant(Agent):
             self.model.grid.move_agent(self, new_position)
             self.coordinates = new_position
 
-    def field_is_safe(self, new_position):
-        x, y = new_position
+    def field_is_safe(self, position):
+        x, y = position
         if any(self.model.grid[x][y]):
             for agent in self.model.grid[x][y]:
                 if isinstance(agent, Ant) and agent.species.id != self.species.id:
+                    print("Attack")
                     self.attack(agent)
                     return False
-            return True
+        return True
 
     def attack(self, agent):
         agent.health -= self.size
-        if agent.health <= 0:
-            self.model.schedule.remove(agent)
 
 
 class WorkerAnt(Ant):
@@ -48,7 +47,11 @@ class WorkerAnt(Ant):
         super().__init__(unique_id, model, species, size, coordinates)
 
     def step(self):
-        self.move()
+        if self.health <= 0:
+            self.model.schedule.remove(self)
+            self.model.grid.remove_agent(self)
+        else:
+            self.move()
 
 
 class Queen(Ant):
@@ -56,6 +59,9 @@ class Queen(Ant):
         super().__init__(unique_id, model, species, size)
 
     def step(self):
+        if self.health <= 0:
+            self.model.schedule.remove(self)
+            self.model.grid.remove_agent(self)
         self.move()
 
 
@@ -103,7 +109,7 @@ class AntsWorld(Model):
         for i in range(self.num_species):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            c = Colony(self.next_id(), self, Species(i, i + 1, i), (x, y))
+            c = Colony(self.next_id(), self, Species(i+1, i + 1, i), (x, y))
             self.schedule.add(c)
             self.grid.place_agent(c, (x, y))
         for i in range(2 * self.num_species):

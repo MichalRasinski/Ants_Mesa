@@ -1,7 +1,8 @@
 from mesa import Agent, Model
 from mesa.space import *
 from mesa.time import RandomActivation
-import math
+from collections import defaultdict
+from mesa.datacollection import DataCollector
 
 ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
@@ -9,11 +10,25 @@ SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 
 
+# killed ant produces feromone crying for help
+# killed ant is a source of food
+# starving ant may ask for food another ant
+
+
 def sign(x):
     if x == 0:
         return 0
     else:
         return int(x / abs(x))
+
+
+def count_ants(model, species_id):
+    # ants_by_species = defaultdict(lambda: 0)
+    ants = filter(lambda x: isinstance(x, Ant) and x.species.id == species_id, model.schedule.agents)
+    ants = list(ants)
+    # for ant in ants:
+    #     ants_by_species[ant.species.id] += 1
+    return len(ants)
 
 
 class Species:
@@ -51,7 +66,7 @@ class Ant(Agent):
         self.species = species
         self.cargo = 0
 
-    # just move to other cell
+    # just move to given cell
     def move(self, new_position):
         self.model.grid.move_agent(self, new_position)
         self.coordinates = new_position
@@ -69,7 +84,7 @@ class Ant(Agent):
                         objects["enemies"].append(agent)
         return objects
 
-    # attack other ant
+    # attack given ant
     def attack(self, agent):
         agent.health -= self.size * SIZE_DAMAGE_RATIO
 
@@ -153,6 +168,7 @@ class Colony(Agent):
             self.model.schedule.add(ant)
             self.model.grid.place_agent(ant, self.coordinates)
 
+
 # TODO display number of ants
 class AntsWorld(Model):
     def __init__(self, N_species, width, height):
@@ -161,6 +177,10 @@ class AntsWorld(Model):
         self.grid = MultiGrid(width, height, False)
         self.schedule = RandomActivation(self)
         self.counter = 0
+        self.data_collector = DataCollector(
+            model_reporters={"Species {}".format(s_id): (lambda id: (lambda m: count_ants(m, id)))(s_id) for s_id in
+                             range(self.num_species)}
+        )
         # Create agents
         for i in range(self.num_species):
             x = self.random.randrange(self.grid.width)
@@ -168,7 +188,7 @@ class AntsWorld(Model):
             c = Colony(self.next_id(), self, Species(i + 1, i + 1, i), (x, y))
             self.schedule.add(c)
             self.grid.place_agent(c, (x, y))
-        for _ in range(2 * self.num_species):
+        for _ in range(10 * self.num_species):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             fs = FoodSite(self.next_id(), self, self.random.randrange(50), regeneration_rate=0 * self.random.random())
@@ -176,4 +196,5 @@ class AntsWorld(Model):
             self.grid.place_agent(fs, (x, y))
 
     def step(self):
+        self.data_collector.collect(self)
         self.schedule.step()

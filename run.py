@@ -1,10 +1,14 @@
 from ants_model import *
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
+from mesa.visualization.modules import ChartModule
 
-#TODO text of food inside colony
+# TODO text of food inside colony
+
+colours = ["blue", "black", "red"]
+
+
 def agent_portrayal(agent):
-    colours = ["blue", "black", "red"]
     if isinstance(agent, Ant):
         portrayal = {"Shape": "circle",
                      "Filled": "true",
@@ -33,11 +37,19 @@ def agent_portrayal(agent):
     return portrayal
 
 
-width = height = 100
+N_species = 3
+width = height = 30
+
+labels = ["Species {}".format(s_id) for s_id in range(N_species)]
+
+chart = ChartModule(
+    [{"Label": label, "Color": colour} for label, colour in zip(labels, colours)],
+    data_collector_name='data_collector'
+)
 map = CanvasGrid(agent_portrayal, width, height)
 server = ModularServer(AntsWorld,
-                       [map],
+                       [map, chart],
                        "Ants World",
-                       {"N_species": 3, "width": width, "height": height})
+                       {"N_species": N_species, "width": width, "height": height})
 server.port = 8521  # The default
 server.launch()

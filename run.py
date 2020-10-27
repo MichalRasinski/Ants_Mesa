@@ -27,7 +27,7 @@ def agent_portrayal(agent):
     return portrayal
 
 
-width = height = 50
+width = height = 20
 map = CanvasGrid(agent_portrayal, width, height)
 server = ModularServer(AntsWorld,
                        [map],

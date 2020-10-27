@@ -2,6 +2,18 @@ from mesa import Agent, Model
 from mesa.space import *
 from mesa.time import RandomActivation
 
+ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
+SIZE_HEALTH_RATIO = 2
+SIZE_DAMAGE_RATIO = 1
+FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
+
+
+def sign(x):
+    if x == 0:
+        return 0
+    else:
+        return int(x/abs(x))
+
 
 class Species:
     def __init__(self, ant_size, base_reproduction_rate, id):
@@ -10,65 +22,89 @@ class Species:
         self.ant_size = ant_size
 
 
+class FoodSite(Agent):
+    def __init__(self, unique_id, model, initial_food_units, regeneration_rate=0):
+        super().__init__(unique_id, model)
+        self.initial_food_units = initial_food_units
+        self.food_units = initial_food_units
+        self.rate = regeneration_rate
+
+    def step(self):
+        self.food_units = min(self.food_units + self.rate, self.initial_food_units)
+
+
 class Ant(Agent):
     def __init__(self, unique_id, model, species, size, coordinates, home_coord, stays_inside):
         super().__init__(unique_id, model)
         self.stays_inside = stays_inside
         self.home_coord = home_coord
-        self.health = size
+        self.health = size * SIZE_HEALTH_RATIO
         self.coordinates = coordinates
         self.species = species
         self.size = size
+        self.cargo = 0
 
-    def move(self, dx=None, dy=None):
-        if dx or dy:
-            new_position = self.coordinates[0] - dx, self.coordinates[1] - dy
-        else:
-            possible_steps = self.model.grid.get_neighborhood(
-                self.coordinates,
-                moore=True)
-            new_position = self.random.choice(possible_steps)
+    # just move to other cell
+    def move(self, new_position):
+        self.model.grid.move_agent(self, new_position)
+        self.coordinates = new_position
 
-        enemy_ant = self.search_for_enemies(new_position)
-        if enemy_ant:
-            self.attack(enemy_ant)
-        else:
-            self.model.grid.move_agent(self, new_position)
-            self.coordinates = new_position
+    # get dictionary of objects in the 8-neighbourhood
+    def check_neighbourhood(self):
+        objects = {"enemies": [], "food": []}
+        possible_steps = self.model.grid.get_neighborhood(self.coordinates, moore=True)
+        for x, y in possible_steps:
+            if any(self.model.grid[x][y]):
+                for agent in self.model.grid[x][y]:
+                    if isinstance(agent, FoodSite):
+                        objects["food"].append(agent)
+                    elif isinstance(agent, Ant) and agent.species.id != self.species.id:
+                        objects["enemies"].append(agent)
+        return objects
 
-    # check if a cell is occupied and attack enemy ants
-    def search_for_enemies(self, position):
-        x, y = position
-        if any(self.model.grid[x][y]):
-            for agent in self.model.grid[x][y]:
-                if isinstance(agent, Ant) and agent.species.id != self.species.id:
-                    return agent
-        return None
-
+    # attack other ant
     def attack(self, agent):
-        agent.health -= self.size
+        agent.health -= self.size * SIZE_DAMAGE_RATIO
 
-    def go_back(self):
-        dx, dy = self.home_coord - self.coordinates
-        move_x = self.random.choice(0, dx / abs(dx))
-        move_y = self.random.choice(0, dy / abs(dy))
-        self.move(move_x, move_y)
+    # slightly randomized home going
+    def go_home(self):
+        dx, dy = [a - b for a, b in zip(self.home_coord, self.coordinates)]
+        move_x = self.random.choice([0, sign(dx)])
+        move_y = self.random.choice([0, sign(dy)])
+        new_position = (self.coordinates[0] + move_x, self.coordinates[1] + move_y)
+        self.move(new_position)
+
+    # take food from the food_site
+    def take_food(self, food_site: FoodSite) -> None:
+        self.cargo = min(self.size * ANT_SIZE_CARGO_RATIO, food_site.food_units)
+        food_site.food_units -= self.cargo
+
+    # just die
+    def die(self):
+        self.model.schedule.remove(self)
+        self.model.grid.remove_agent(self)
 
     def step(self):
         if self.health <= 0:
-            self.model.schedule.remove(self)
-            self.model.grid.remove_agent(self)
+            self.die()
         elif self.stays_inside:
             pass
+        elif self.cargo:
+            self.go_home()
         else:
-            self.move()
+            objects = self.check_neighbourhood()
+            if objects["enemies"]:
+                self.attack(objects["enemies"][0])
+            elif objects["food"]:
+                self.take_food(objects["food"][0])
+            else:
+                possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
+                self.move(self.random.choice(possible_moves))
 
 
 # class WorkerAnt(Ant):
 #     def __init__(self, unique_id, model, species, size, coordinates, home_coord):
 #         super().__init__(self, unique_id, model, species, size, coordinates, home_coord)
-
-
 # class HomeAnt(Ant):
 #     def __init__(self, unique_id, model, species, size, coordinates, home_coord):
 #         super().__init__(self, unique_id, model, species, size, coordinates, home_coord)
@@ -77,12 +113,6 @@ class Ant(Agent):
 class Queen(Ant):
     def __init__(self, unique_id, model, species, size):
         super().__init__(unique_id, model, species, size)
-
-    def step(self):
-        if self.health <= 0:
-            self.model.schedule.remove(self)
-            self.model.grid.remove_agent(self)
-        self.move()
 
 
 class Colony(Agent):
@@ -99,24 +129,13 @@ class Colony(Agent):
         self.turn_counter += 1
         ants_to_spawn = self.turn_counter // self.species.base_reproduction_rate
         if ants_to_spawn and self.food_units > 2 * self.species.ant_size:
-            self.food_units -= 2 * self.species.ant_size
+            self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
             self.turn_counter -= self.species.base_reproduction_rate
             stays_inside = self.random.random() > 0.3
             ant = Ant(self.model.next_id(), self.model, self.species, self.species.ant_size, self.coordinates,
                       self.coordinates, stays_inside)
             self.model.schedule.add(ant)
             self.model.grid.place_agent(ant, self.coordinates)
-
-
-class FoodSite(Agent):
-    def __init__(self, unique_id, model, initial_food_units, regeneration_rate=0):
-        super().__init__(unique_id, model)
-        self.initial_food_units = initial_food_units
-        self.food_units = initial_food_units
-        self.rate = regeneration_rate
-
-    def step(self):
-        self.food_units = min(self.food_units + self.rate, self.initial_food_units)
 
 
 class AntsWorld(Model):

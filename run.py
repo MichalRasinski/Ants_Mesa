@@ -11,6 +11,12 @@ def agent_portrayal(agent):
                      "Layer": 0,
                      "Color": colours[agent.species.id],
                      "r": 0.5}
+        if agent.cargo > 0:
+            portrayal = {"Shape": "circle",
+                         "Filled": "false",
+                         "Layer": 0,
+                         "Color": "green",
+                         "r": 0.5}
     elif type(agent) is Colony:
         portrayal = {"Shape": "circle",
                      "Filled": "true",
@@ -27,7 +33,7 @@ def agent_portrayal(agent):
     return portrayal
 
 
-width = height = 20
+width = height = 10
 map = CanvasGrid(agent_portrayal, width, height)
 server = ModularServer(AntsWorld,
                        [map],

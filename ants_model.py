@@ -4,8 +4,8 @@ from mesa.time import RandomActivation
 import math
 
 ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
-SIZE_HEALTH_RATIO = 2
-SIZE_DAMAGE_RATIO = 1
+SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
+SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 
 
@@ -38,7 +38,8 @@ class FoodSite(Agent):
             self.model.grid.remove_agent(self)
 
 
-# TODO
+# TODO feromone path
+# TODO energy
 class Ant(Agent):
     def __init__(self, unique_id, model, species, coordinates, home_colony, stays_inside):
         super().__init__(unique_id, model)
@@ -72,7 +73,7 @@ class Ant(Agent):
     def attack(self, agent):
         agent.health -= self.size * SIZE_DAMAGE_RATIO
 
-    # slightly randomized home going
+    # home going
     def go_home(self):
         dx, dy = [a - b for a, b in zip(self.home_colony.coordinates, self.coordinates)]
         move_x = sign(dx)  # self.random.choice([0, sign(dx)])
@@ -85,6 +86,7 @@ class Ant(Agent):
         self.cargo = min(self.size * ANT_SIZE_CARGO_RATIO, food_site.food_units)
         food_site.food_units -= self.cargo
 
+    # leave food at the colony
     def leave_food(self, colony):
         colony.food_units += self.cargo
         self.cargo = 0
@@ -98,7 +100,9 @@ class Ant(Agent):
         if self.health <= 0:
             self.die()
         elif self.stays_inside:
-            pass
+            objects = self.check_neighbourhood()
+            if objects["enemies"]:
+                self.attack(objects["enemies"][0])
         elif self.cargo:
             if self.coordinates == self.home_colony.coordinates:
                 self.leave_food(self.home_colony)
@@ -132,7 +136,7 @@ class Colony(Agent):
     def __init__(self, unique_id, model, species: Species, coordinates):
         super().__init__(unique_id, model)
         self.species = species
-        self.food_units = 100
+        self.food_units = 50
         self.coordinates = coordinates
         self.ants_inside = 0
         self.turn_counter = 0
@@ -149,7 +153,7 @@ class Colony(Agent):
             self.model.schedule.add(ant)
             self.model.grid.place_agent(ant, self.coordinates)
 
-
+# TODO display number of ants
 class AntsWorld(Model):
     def __init__(self, N_species, width, height):
         super().__init__()
@@ -164,10 +168,10 @@ class AntsWorld(Model):
             c = Colony(self.next_id(), self, Species(i + 1, i + 1, i), (x, y))
             self.schedule.add(c)
             self.grid.place_agent(c, (x, y))
-        for i in range(2 * self.num_species):
+        for _ in range(2 * self.num_species):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            fs = FoodSite(self.next_id(), self, self.random.randrange(100), regeneration_rate=2 * self.random.random())
+            fs = FoodSite(self.next_id(), self, self.random.randrange(50), regeneration_rate=0 * self.random.random())
             self.schedule.add(fs)
             self.grid.place_agent(fs, (x, y))
 

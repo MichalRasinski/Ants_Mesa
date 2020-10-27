@@ -2,7 +2,7 @@ from ants_model import *
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 
-
+#TODO text of food inside colony
 def agent_portrayal(agent):
     colours = ["blue", "black", "red"]
     if isinstance(agent, Ant):
@@ -33,7 +33,7 @@ def agent_portrayal(agent):
     return portrayal
 
 
-width = height = 10
+width = height = 100
 map = CanvasGrid(agent_portrayal, width, height)
 server = ModularServer(AntsWorld,
                        [map],

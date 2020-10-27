@@ -10,9 +10,6 @@ Ants:
 - if are nex to a food site, then they pick food and go to the home colony
 - if they carry food and are next to the colony then they leave it there
 
-# TODO
-- ants carring food leaves feromone trail
-
 Colonies:
 - spawn ants 
 - stores food
@@ -20,3 +17,7 @@ Colonies:
 FoodSites:
 - store food
 - regenerate food if they are renewable
+
+# TODO
+- ants carring food leaves feromone trail
+

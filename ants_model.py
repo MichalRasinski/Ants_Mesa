@@ -32,6 +32,10 @@ class FoodSite(Agent):
 
     def step(self):
         self.food_units = min(self.food_units + self.rate, self.initial_food_units)
+        self.food_units += self.rate
+        if self.food_units == 0:
+            self.model.schedule.remove(self)
+            self.model.grid.remove_agent(self)
 
 
 # TODO
@@ -71,8 +75,8 @@ class Ant(Agent):
     # slightly randomized home going
     def go_home(self):
         dx, dy = [a - b for a, b in zip(self.home_colony.coordinates, self.coordinates)]
-        move_x = self.random.choice([0, sign(dx)])
-        move_y = self.random.choice([0, sign(dy)])
+        move_x = sign(dx)  # self.random.choice([0, sign(dx)])
+        move_y = sign(dy)  # self.random.choice([0, sign(dy)])
         new_position = (self.coordinates[0] + move_x, self.coordinates[1] + move_y)
         self.move(new_position)
 

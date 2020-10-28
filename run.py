@@ -37,8 +37,8 @@ def agent_portrayal(agent):
     return portrayal
 
 
-N_species = 3
-width = height = 30
+N_species = 2
+width = height = 20
 
 labels = ["Species {}".format(s_id) for s_id in range(N_species)]
 

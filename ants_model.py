@@ -8,6 +8,7 @@ ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
+SIZE_SELF_PHEROMONE_RATIO = 10
 
 
 # killed ant produces pheromone crying for help
@@ -18,13 +19,12 @@ def sign(x):
     if x == 0:
         return 0
     else:
-        return int(x / abs(x))
+        return x // abs(x)
 
 
 def count_ants(model, species_id):
     ants = filter(lambda x: isinstance(x, Ant) and x.species.id == species_id, model.schedule.agents)
-    ants = list(ants)
-    return len(ants)
+    return len(list(ants))
 
 
 class Species:
@@ -63,10 +63,14 @@ class Ant(Agent):
         self.coordinates = coordinates
         self.species = species
         self.cargo = 0
+        self.last_position = None
 
-    # just move to given cell
-    def move(self, new_position):
+    # just move to given cell and leave pheromone there
+    def move(self, new_position: Tuple[int, int]):
+        x, y = new_position
+        self.model.pheromone_map[x][y][self] += SIZE_SELF_PHEROMONE_RATIO * self.size
         self.model.grid.move_agent(self, new_position)
+        self.last_position = self.coordinates
         self.coordinates = new_position
 
     # get dictionary of objects in the 8-neighbourhood
@@ -86,10 +90,17 @@ class Ant(Agent):
 
     # home going
     def go_home(self):
-        dx, dy = [a - b for a, b in zip(self.home_colony.coordinates, self.coordinates)]
-        move_x = sign(dx)  # self.random.choice([0, sign(dx)])
-        move_y = sign(dy)  # self.random.choice([0, sign(dy)])
-        new_position = (self.coordinates[0] + move_x, self.coordinates[1] + move_y)
+        back_path = {}
+        for x, y in self.model.pheromone_map.iter_neighborhood(self.coordinates, moore=True):
+            if self.model.pheromone_map[x][y][self] > 0:
+                back_path[(x, y)] = self.model.pheromone_map[x][y][self]
+        back_path.pop(self.last_position, None)
+        if not back_path:
+            possible_moves = self.model.pheromone_map.get_neighborhood(self.coordinates, moore=True)
+            new_position = self.random.choice(possible_moves)
+        else:
+            new_position = self.random.choices(list(back_path), weights=back_path.values(), k=1)[0]
+        self.last_position = self.coordinates
         self.move(new_position)
 
     # take food from the food_site
@@ -115,7 +126,7 @@ class Ant(Agent):
             if objects["enemies"]:
                 self.attack(objects["enemies"][0])
         elif self.cargo:
-            if self.coordinates == self.home_colony.coordinates:
+            if self.coordinates in self.model.grid.get_neighborhood(self.home_colony.coordinates, moore=True):
                 self.leave_food(self.home_colony)
             else:
                 self.go_home()
@@ -128,6 +139,7 @@ class Ant(Agent):
             else:
                 possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
                 self.move(self.random.choice(possible_moves))
+
 
 class Queen(Ant):
     def __init__(self, unique_id, model, species, size):
@@ -188,6 +200,10 @@ class AntsWorld(Model):
     def step(self):
         self.data_collector.collect(self)
         self.schedule.step()
+        for x in range(self.grid.width):
+            for y in range(self.grid.height):
+                for k in self.pheromone_map[x][y].keys():
+                    self.pheromone_map[x][y][k] = max(0, self.pheromone_map[x][y][k] - 1)
 
     # def get_colonies(self):
     #     colonies = filter(lambda x: isinstance(x, Colony), self.schedule.agents)

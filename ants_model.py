@@ -14,7 +14,6 @@ FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 # killed ant is a source of food
 # starving ant may ask for food another ant
 
-# TODO apply iter_neighbors instead of get_neighbors
 def sign(x):
     if x == 0:
         return 0
@@ -71,16 +70,14 @@ class Ant(Agent):
         self.coordinates = new_position
 
     # get dictionary of objects in the 8-neighbourhood
-    def check_neighbourhood(self):
+    def check_neighbours(self):
         objects = {"enemies": [], "food": []}
-        possible_steps = self.model.grid.get_neighborhood(self.coordinates, moore=True)
-        for x, y in possible_steps:
-            if any(self.model.grid[x][y]):
-                for agent in self.model.grid[x][y]:
-                    if isinstance(agent, FoodSite):
-                        objects["food"].append(agent)
-                    elif isinstance(agent, Ant) and agent.species.id != self.species.id:
-                        objects["enemies"].append(agent)
+        neighbors = self.model.grid.iter_neighbors(self.coordinates, moore=True)
+        for neighbor in neighbors:
+            if isinstance(neighbor, FoodSite):
+                objects["food"].append(neighbor)
+            elif isinstance(neighbor, Ant) and neighbor.species.id != self.species.id:
+                objects["enemies"].append(neighbor)
         return objects
 
     # attack given ant
@@ -114,7 +111,7 @@ class Ant(Agent):
         if self.health <= 0:
             self.die()
         elif self.stays_inside:
-            objects = self.check_neighbourhood()
+            objects = self.check_neighbours()
             if objects["enemies"]:
                 self.attack(objects["enemies"][0])
         elif self.cargo:
@@ -123,7 +120,7 @@ class Ant(Agent):
             else:
                 self.go_home()
         else:
-            objects = self.check_neighbourhood()
+            objects = self.check_neighbours()
             if objects["enemies"]:
                 self.attack(objects["enemies"][0])
             elif objects["food"]:
@@ -131,15 +128,6 @@ class Ant(Agent):
             else:
                 possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
                 self.move(self.random.choice(possible_moves))
-
-
-# class WorkerAnt(Ant):
-#     def __init__(self, unique_id, model, species, size, coordinates, home_coord):
-#         super().__init__(self, unique_id, model, species, size, coordinates, home_coord)
-# class HomeAnt(Ant):
-#     def __init__(self, unique_id, model, species, size, coordinates, home_coord):
-#         super().__init__(self, unique_id, model, species, size, coordinates, home_coord)
-
 
 class Queen(Ant):
     def __init__(self, unique_id, model, species, size):

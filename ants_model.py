@@ -1,8 +1,8 @@
 from mesa import Agent, Model
 from mesa.space import *
 from mesa.time import RandomActivation
-from collections import defaultdict
 from mesa.datacollection import DataCollector
+from collections import defaultdict
 
 ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
@@ -10,11 +10,11 @@ SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 
 
-# killed ant produces feromone crying for help
+# killed ant produces pheromone crying for help
 # killed ant is a source of food
 # starving ant may ask for food another ant
 
-
+# TODO apply iter_neighbors instead of get_neighbors
 def sign(x):
     if x == 0:
         return 0
@@ -23,11 +23,8 @@ def sign(x):
 
 
 def count_ants(model, species_id):
-    # ants_by_species = defaultdict(lambda: 0)
     ants = filter(lambda x: isinstance(x, Ant) and x.species.id == species_id, model.schedule.agents)
     ants = list(ants)
-    # for ant in ants:
-    #     ants_by_species[ant.species.id] += 1
     return len(ants)
 
 
@@ -53,8 +50,10 @@ class FoodSite(Agent):
             self.model.grid.remove_agent(self)
 
 
-# TODO feromone path
+# TODO Singular Grid
+# TODO pheromone path
 # TODO energy
+# TODO colony stores ants, decides whether to release ants based on food supplies
 class Ant(Agent):
     def __init__(self, unique_id, model, species, coordinates, home_colony, stays_inside):
         super().__init__(unique_id, model)
@@ -176,7 +175,10 @@ class AntsWorld(Model):
         self.num_species = N_species
         self.grid = MultiGrid(width, height, False)
         self.schedule = RandomActivation(self)
-        self.counter = 0
+        self.pheromone_map = Grid(width, height, False)
+        for x in range(width):
+            for y in range(height):
+                self.pheromone_map[x][y] = defaultdict(lambda: 0)
         self.data_collector = DataCollector(
             model_reporters={"Species {}".format(s_id): (lambda id: (lambda m: count_ants(m, id)))(s_id) for s_id in
                              range(self.num_species)}
@@ -198,3 +200,10 @@ class AntsWorld(Model):
     def step(self):
         self.data_collector.collect(self)
         self.schedule.step()
+
+    # def get_colonies(self):
+    #     colonies = filter(lambda x: isinstance(x, Colony), self.schedule.agents)
+    #     colonies_by_species = defaultdict(list)
+    #     for colony in colonies:
+    #         colonies_by_species[colony.species.id].append(colony)
+    #     return colonies_by_species

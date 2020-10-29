@@ -82,7 +82,12 @@ class Colony(Agent):
             else:
                 self.model.grid.place_agent(
                     ant,
-                    self.random.choice(self.model.grid.get_neighborhood(self.coordinates, moore=True))
+                    self.random.choice(
+                        list(
+                            filter(lambda c: self.model.grid.is_cell_empty(c),
+                                   self.model.grid.get_neighborhood(self.coordinates, moore=True))
+                        )
+                    )
                 )
                 # TODO display number of ants
 
@@ -92,7 +97,7 @@ class AntsWorld(Model):
         super().__init__()
         self.N_food_sites = N_food_sites
         self.N_species = N_species
-        self.grid = MultiGrid(width, height, False)
+        self.grid = SingleGrid(width, height, False)
         self.schedule = RandomActivation(self)
         self.pheromone_map = Grid(width, height, False)
         for x in range(width):
@@ -106,12 +111,18 @@ class AntsWorld(Model):
         for i in range(self.N_species):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
+            while not self.grid.is_cell_empty((x, y)):
+                x = self.random.randrange(self.grid.width)
+                y = self.random.randrange(self.grid.height)
             c = Colony(self.next_id(), self, Species(i + 1, i + 1, i), (x, y))
             self.schedule.add(c)
             self.grid.place_agent(c, (x, y))
         for _ in range(self.N_food_sites):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
+            while not self.grid.is_cell_empty((x, y)):
+                x = self.random.randrange(self.grid.width)
+                y = self.random.randrange(self.grid.height)
             fs = FoodSite(self.next_id(), self, self.random.randrange(50), (x, y), 0 * self.random.random())
             self.schedule.add(fs)
             self.grid.place_agent(fs, (x, y))

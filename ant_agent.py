@@ -26,10 +26,11 @@ class Ant(Agent):
         self.cargo = 0
         self.last_position = coordinates
 
-    # just move to given cell
+    # just move to the given cell
     def move(self, new_position):
-        self.model.grid.move_agent(self, new_position)
-        self.coordinates = new_position
+        if self.model.grid.is_cell_empty(new_position):
+            self.model.grid.move_agent(self, new_position)
+            self.coordinates = new_position
 
     # get dictionary of objects in the 8-neighbourhood
     def sense_neighborhood(self):
@@ -59,23 +60,6 @@ class Ant(Agent):
         self.last_position = self.coordinates
         self.move(new_position)
 
-    # Finds more or less straight path based on intersection of current neighborhood and the neighborhood of
-    # the next point that lies in the direction the ant is going. If no such points then take random except
-    # the last position
-    def find_straight_path(self):
-        dx = self.coordinates[0] - self.last_position[0]
-        dy = self.coordinates[1] - self.last_position[1]
-        new_pos = self.coordinates[0] + dx, self.coordinates[1] + dy
-        first_neighborhood = set(self.model.grid.get_neighborhood(self.coordinates, moore=True))
-        second_neighborhood = set(self.model.grid.get_neighborhood(new_pos, moore=False, include_center=True))
-        possible_moves = list(first_neighborhood & second_neighborhood)
-        if not possible_moves:
-            possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
-            possible_moves.remove(self.last_position)
-        move_weights = [8 if pos == new_pos else 1 for pos in possible_moves]
-        return self.random.choices(possible_moves, move_weights, k=1)[0]
-
-    # go in search for food, leave self-pheromone
     def go_forage(self):
         if self.last_position == self.coordinates:
             new_pos = self.random.choice(self.model.grid.get_neighborhood(self.coordinates, moore=True))
@@ -86,6 +70,25 @@ class Ant(Agent):
         self.last_position = self.coordinates
         self.move(new_pos)
         self.leave_pheromone(self, SIZE_SELF_PHEROMONE_RATIO)
+
+    # Finds more or less straight path based on intersection of current neighborhood and the neighborhood of
+    # the next point that lies in the direction the ant is going. If no such points then take random except
+    # the last position
+    def find_straight_path(self):
+        dx = self.coordinates[0] - self.last_position[0]
+        dy = self.coordinates[1] - self.last_position[1]
+        point_on_trajectory = self.coordinates[0] + dx, self.coordinates[1] + dy
+        first_neighborhood = set(self.model.grid.get_neighborhood(self.coordinates, moore=True))
+        second_neighborhood = set(
+            self.model.grid.get_neighborhood(point_on_trajectory, moore=False, include_center=True))
+        possible_moves = list(first_neighborhood & second_neighborhood)
+        if not possible_moves:
+            possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
+            possible_moves.remove(self.last_position)
+        move_weights = [8 if pos == point_on_trajectory else 1 for pos in possible_moves]
+        return self.random.choices(possible_moves, move_weights, k=1)[0]
+
+    # go in search for food, leave self-pheromone
 
     def leave_pheromone(self, smell, strength):
         x, y = self.coordinates
@@ -118,9 +121,7 @@ class Ant(Agent):
         if self.health <= 0:
             self.die()
         elif self.in_colony:
-            objects = self.sense_neighborhood()
-            if objects["enemies"]:
-                self.attack(objects["enemies"][0])
+            pass
         elif self.cargo:
             if self.coordinates in self.model.grid.get_neighborhood(self.home_colony.coordinates, moore=True):
                 self.leave_food(self.home_colony)

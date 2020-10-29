@@ -3,10 +3,16 @@ from ant_agent import *
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import ChartModule
-
+import random
 # TODO text of food inside colony
 
-colours = ["blue", "black", "red"]
+N_species = 3
+N_food_sites = 10
+width = height = 10
+
+colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+           for i in range(N_species)]
+labels = ["Species {}".format(s_id) for s_id in range(N_species)]
 
 
 def agent_portrayal(agent):
@@ -37,12 +43,6 @@ def agent_portrayal(agent):
                      "Color": "Yellow"}
     return portrayal
 
-
-N_species = 2
-N_food_sites = 15
-width = height = 25
-
-labels = ["Species {}".format(s_id) for s_id in range(N_species)]
 
 chart = ChartModule(
     [{"Label": label, "Color": colour} for label, colour in zip(labels, colours)],

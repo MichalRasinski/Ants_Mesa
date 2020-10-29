@@ -74,13 +74,17 @@ class Colony(Agent):
         if ants_to_spawn and self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
             self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
             self.turn_counter -= self.species.base_reproduction_rate
-            stays_inside = self.random.random() > 0.3
-            ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.coordinates, self, stays_inside)
+            in_colony = self.random.random() > 0.3
+            ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.coordinates, self, in_colony)
             self.model.schedule.add(ant)
-            self.model.grid.place_agent(ant, self.coordinates)
+            if not in_colony:
+                self.model.grid.place_agent(
+                    ant,
+                    self.random.choice(self.model.grid.get_neighborhood(self.coordinates, moore=True))
+                )
+                # TODO display number of ants
 
 
-# TODO display number of ants
 class AntsWorld(Model):
     def __init__(self, N_species, N_food_sites, width, height, ):
         super().__init__()

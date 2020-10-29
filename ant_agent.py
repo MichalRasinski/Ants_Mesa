@@ -10,15 +10,14 @@ SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 SIZE_SELF_PHEROMONE_RATIO = 20
 
 
-# TODO Foraging ants go more or less straight
 # TODO Singular Grid
 # TODO pheromone path
 # TODO energy
 # TODO colony stores ants, decides whether to release ants based on food supplies
 class Ant(Agent):
-    def __init__(self, unique_id, model, species, coordinates, home_colony, stays_inside):
+    def __init__(self, unique_id, model, species, coordinates, home_colony, in_colony):
         super().__init__(unique_id, model)
-        self.stays_inside = stays_inside
+        self.in_colony = in_colony
         self.home_colony = home_colony
         self.size = species.ant_size
         self.health = self.size * SIZE_HEALTH_RATIO
@@ -60,8 +59,10 @@ class Ant(Agent):
         self.last_position = self.coordinates
         self.move(new_position)
 
-    def go_straight(self):
-
+    # Finds more or less straight path based on intersection of current neighborhood and the neighborhood of
+    # the next point that lies in the direction the ant is going. If no such points then take random except
+    # the last position
+    def find_straight_path(self):
         dx = self.coordinates[0] - self.last_position[0]
         dy = self.coordinates[1] - self.last_position[1]
         new_pos = self.coordinates[0] + dx, self.coordinates[1] + dy
@@ -73,16 +74,6 @@ class Ant(Agent):
             possible_moves.remove(self.last_position)
         move_weights = [8 if pos == new_pos else 1 for pos in possible_moves]
         return self.random.choices(possible_moves, move_weights, k=1)[0]
-        # new_dx, new_dy = dx, dy
-        # if new_dx == 0:
-        #     new_dx = self.random.choices([-1, 0, 1], weights=[0.1, 0.8, 0.1])[0]
-        # if new_dy == 0:
-        #     new_dy = self.random.choices([-1, 0, 1], weights=[0.1, 0.8, 0.1])[0]
-        # if abs(new_dx) and abs(new_dy):
-        #     new_dx = self.random.choices([0, new_dx], weights=[0.2, 0.8])[0]
-        # new_dy = self.random.choices([0, new_dy], weights=[0.2, 0.8])[0]
-        #
-        # return self.coordinates[0] + new_dx, self.coordinates[1] + new_dy
 
     # go in search for food, leave self-pheromone
     def go_forage(self):
@@ -91,7 +82,7 @@ class Ant(Agent):
         elif list(self.smell_neighborhood_for("food")):
             new_pos = self.random.choice(list(self.smell_neighborhood_for("food")))
         else:
-            new_pos = self.go_straight()
+            new_pos = self.find_straight_path()
         self.last_position = self.coordinates
         self.move(new_pos)
         self.leave_pheromone(self, SIZE_SELF_PHEROMONE_RATIO)
@@ -126,7 +117,7 @@ class Ant(Agent):
     def step(self):
         if self.health <= 0:
             self.die()
-        elif self.stays_inside:
+        elif self.in_colony:
             objects = self.sense_neighborhood()
             if objects["enemies"]:
                 self.attack(objects["enemies"][0])

@@ -64,11 +64,11 @@ class Colony(Agent):
         self.species = species
         self.food_units = 50
         self.coordinates = coordinates
-        self.ants_inside = 0
+        self.ants_inside = []
         self.turn_counter = 0
 
     def step(self):
-        self.food_units -= self.ants_inside * self.species.ant_size
+        # self.food_units -= self.ants_inside * self.species.ant_size
         self.turn_counter += 1
         ants_to_spawn = self.turn_counter // self.species.base_reproduction_rate
         if ants_to_spawn and self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
@@ -77,7 +77,9 @@ class Colony(Agent):
             in_colony = self.random.random() > 0.3
             ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.coordinates, self, in_colony)
             self.model.schedule.add(ant)
-            if not in_colony:
+            if in_colony:
+                self.ants_inside.append(ant)
+            else:
                 self.model.grid.place_agent(
                     ant,
                     self.random.choice(self.model.grid.get_neighborhood(self.coordinates, moore=True))

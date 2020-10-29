@@ -70,26 +70,27 @@ class Colony(Agent):
     def step(self):
         # self.food_units -= self.ants_inside * self.species.ant_size
         self.turn_counter += 1
+
         ants_to_spawn = self.turn_counter // self.species.base_reproduction_rate
         if ants_to_spawn and self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
             self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
             self.turn_counter -= self.species.base_reproduction_rate
-            in_colony = self.random.random() > 0.3
-            ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.coordinates, self, in_colony)
+
+            ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.coordinates, self)
+            self.ants_inside.append(ant)
             self.model.schedule.add(ant)
-            if in_colony:
-                self.ants_inside.append(ant)
-            else:
-                self.model.grid.place_agent(
-                    ant,
-                    self.random.choice(
-                        list(
-                            filter(lambda c: self.model.grid.is_cell_empty(c),
-                                   self.model.grid.get_neighborhood(self.coordinates, moore=True))
-                        )
-                    )
+
+        ants_to_release = self.turn_counter // self.species.base_reproduction_rate
+        if ants_to_release:
+            ant = self.ants_inside.pop()
+            ant_coordinates = self.random.choice(
+                list(
+                    filter(lambda c: self.model.grid.is_cell_empty(c),
+                           self.model.grid.get_neighborhood(self.coordinates, moore=True))
                 )
-                # TODO display number of ants
+            )
+            ant.coordinates = ant_coordinates
+            self.model.grid.place_agent(ant, ant_coordinates)
 
 
 class AntsWorld(Model):

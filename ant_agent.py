@@ -7,17 +7,16 @@ from itertools import product
 ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
-SIZE_SELF_PHEROMONE_RATIO = 20
+SIZE_PHEROMONE_RATIO = 20
 
 
-# TODO Singular Grid
+# TODO Orientation and visualisation as arrows
 # TODO pheromone path
 # TODO energy
-# TODO colony stores ants, decides whether to release ants based on food supplies
+# TODO colony decides whether to release ants based on food supplies
 class Ant(Agent):
-    def __init__(self, unique_id, model, species, coordinates, home_colony, in_colony):
+    def __init__(self, unique_id, model, species, coordinates, home_colony):
         super().__init__(unique_id, model)
-        self.in_colony = in_colony
         self.home_colony = home_colony
         self.size = species.ant_size
         self.health = self.size * SIZE_HEALTH_RATIO
@@ -26,11 +25,13 @@ class Ant(Agent):
         self.cargo = 0
         self.last_position = coordinates
 
-    # just move to the given cell
+    # Move to the given cell if it is empty if not do nothing. Returns whether move was done.
     def move(self, new_position):
         if self.model.grid.is_cell_empty(new_position):
             self.model.grid.move_agent(self, new_position)
             self.coordinates = new_position
+            return True
+        return False
 
     # get dictionary of objects in the 8-neighbourhood
     def sense_neighborhood(self):
@@ -59,6 +60,7 @@ class Ant(Agent):
             new_position = self.random.choice(possible_moves)
         self.last_position = self.coordinates
         self.move(new_position)
+        self.leave_pheromone("Food Trail", SIZE_PHEROMONE_RATIO)
 
     def go_forage(self):
         if self.last_position == self.coordinates:
@@ -69,7 +71,7 @@ class Ant(Agent):
             new_pos = self.find_straight_path()
         self.last_position = self.coordinates
         self.move(new_pos)
-        self.leave_pheromone(self, SIZE_SELF_PHEROMONE_RATIO)
+        self.leave_pheromone(self, SIZE_PHEROMONE_RATIO)
 
     # Finds more or less straight path based on intersection of current neighborhood and the neighborhood of
     # the next point that lies in the direction the ant is going. If no such points then take random except
@@ -120,7 +122,7 @@ class Ant(Agent):
     def step(self):
         if self.health <= 0:
             self.die()
-        elif self.in_colony:
+        elif self.coordinates == self.home_colony.coordinates:
             pass
         elif self.cargo:
             if self.coordinates in self.model.grid.get_neighborhood(self.home_colony.coordinates, moore=True):

@@ -8,7 +8,7 @@ ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
-SIZE_SELF_PHEROMONE_RATIO = 50
+SIZE_SELF_PHEROMONE_RATIO = 20
 
 
 # killed ant produces pheromone crying for help
@@ -89,7 +89,6 @@ class Ant(Agent):
     # home going
     def go_home(self):
         back_path = self.scan_neighborhood_for(self)
-        back_path.pop(self.last_position, None)
         if back_path:
             new_position = self.random.choices(list(back_path), weights=back_path.values(), k=1)[0]
         else:
@@ -104,7 +103,11 @@ class Ant(Agent):
             possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
         new_x, new_y = self.random.choice(possible_moves)
         self.move((new_x, new_y))
-        self.model.pheromone_map[new_x][new_y][self] += SIZE_SELF_PHEROMONE_RATIO * self.size
+        self.leave_pheromone(self, SIZE_SELF_PHEROMONE_RATIO)
+
+    def leave_pheromone(self, smell, strength):
+        x, y = self.coordinates
+        self.model.pheromone_map[x][y][smell] += strength * self.size
 
     def scan_neighborhood_for(self, smell):
         smells = {}

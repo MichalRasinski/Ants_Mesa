@@ -8,7 +8,7 @@ ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
-SIZE_SELF_PHEROMONE_RATIO = 10
+SIZE_SELF_PHEROMONE_RATIO = 50
 
 
 # killed ant produces pheromone crying for help
@@ -65,12 +65,10 @@ class Ant(Agent):
         self.cargo = 0
         self.last_position = None
 
-    # just move to given cell and leave pheromone there
+    # just move to given cell
     def move(self, new_position: Tuple[int, int]):
         x, y = new_position
-        self.model.pheromone_map[x][y][self] += SIZE_SELF_PHEROMONE_RATIO * self.size
         self.model.grid.move_agent(self, new_position)
-        self.last_position = self.coordinates
         self.coordinates = new_position
 
     # get dictionary of objects in the 8-neighbourhood
@@ -90,18 +88,30 @@ class Ant(Agent):
 
     # home going
     def go_home(self):
-        back_path = {}
-        for x, y in self.model.pheromone_map.iter_neighborhood(self.coordinates, moore=True):
-            if self.model.pheromone_map[x][y][self] > 0:
-                back_path[(x, y)] = self.model.pheromone_map[x][y][self]
+        back_path = self.scan_neighborhood_for(self)
         back_path.pop(self.last_position, None)
-        if not back_path:
+        if back_path:
+            new_position = self.random.choices(list(back_path), weights=back_path.values(), k=1)[0]
+        else:
             possible_moves = self.model.pheromone_map.get_neighborhood(self.coordinates, moore=True)
             new_position = self.random.choice(possible_moves)
-        else:
-            new_position = self.random.choices(list(back_path), weights=back_path.values(), k=1)[0]
         self.last_position = self.coordinates
         self.move(new_position)
+
+    def go_forage(self):
+        possible_moves = self.scan_neighborhood_for("food")
+        if not possible_moves:
+            possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
+        new_x, new_y = self.random.choice(possible_moves)
+        self.move((new_x, new_y))
+        self.model.pheromone_map[new_x][new_y][self] += SIZE_SELF_PHEROMONE_RATIO * self.size
+
+    def scan_neighborhood_for(self, smell):
+        smells = {}
+        for x, y in self.model.pheromone_map.iter_neighborhood(self.coordinates, moore=True):
+            if self.model.pheromone_map[x][y][smell] > 0:
+                smells[(x, y)] = self.model.pheromone_map[x][y][smell]
+        return smells
 
     # take food from the food_site
     def take_food(self, food_site: FoodSite) -> None:
@@ -137,8 +147,7 @@ class Ant(Agent):
             elif objects["food"]:
                 self.take_food(objects["food"][0])
             else:
-                possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
-                self.move(self.random.choice(possible_moves))
+                self.go_forage()
 
 
 class Queen(Ant):

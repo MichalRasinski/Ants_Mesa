@@ -8,7 +8,7 @@ import random
 
 N_species = 3
 N_food_sites = 10
-width = height = 10
+width = height = 20
 
 colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
            for i in range(N_species)]

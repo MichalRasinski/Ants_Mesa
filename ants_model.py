@@ -35,20 +35,24 @@ class Species:
 
 
 class FoodSite(Agent):
-    def __init__(self, unique_id, model, initial_food_units, regeneration_rate=0):
+    def __init__(self, unique_id, model, initial_food_units, coordinates, regeneration_rate=0):
         super().__init__(unique_id, model)
         self.initial_food_units = initial_food_units
         self.food_units = initial_food_units
         self.rate = regeneration_rate
+        self.coordinates = coordinates
 
     def step(self):
         self.food_units = min(self.food_units + self.rate, self.initial_food_units)
         self.food_units += self.rate
-        if self.food_units == 0:
+        for field in self.model.pheromone_map.iter_neighborhood(self.coordinates, moore=True):
+            self.model.pheromone_map[field[0]][field[1]]["food"] = 2
+        if not self.food_units:
             self.model.schedule.remove(self)
             self.model.grid.remove_agent(self)
 
 
+# TODO Foraging ants go more or less straight
 # TODO Singular Grid
 # TODO pheromone path
 # TODO energy
@@ -67,7 +71,6 @@ class Ant(Agent):
 
     # just move to given cell
     def move(self, new_position: Tuple[int, int]):
-        x, y = new_position
         self.model.grid.move_agent(self, new_position)
         self.coordinates = new_position
 
@@ -86,7 +89,7 @@ class Ant(Agent):
     def attack(self, agent):
         agent.health -= self.size * SIZE_DAMAGE_RATIO
 
-    # home going
+    # home going based on the self pheromone
     def go_home(self):
         back_path = self.scan_neighborhood_for(self)
         if back_path:
@@ -97,8 +100,9 @@ class Ant(Agent):
         self.last_position = self.coordinates
         self.move(new_position)
 
+    # go in search for food, leave self-pheromone
     def go_forage(self):
-        possible_moves = self.scan_neighborhood_for("food")
+        possible_moves = list(self.scan_neighborhood_for("food"))
         if not possible_moves:
             possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
         new_x, new_y = self.random.choice(possible_moves)
@@ -205,7 +209,7 @@ class AntsWorld(Model):
         for _ in range(10 * self.num_species):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            fs = FoodSite(self.next_id(), self, self.random.randrange(50), regeneration_rate=0 * self.random.random())
+            fs = FoodSite(self.next_id(), self, self.random.randrange(50), (x, y), 0 * self.random.random())
             self.schedule.add(fs)
             self.grid.place_agent(fs, (x, y))
 

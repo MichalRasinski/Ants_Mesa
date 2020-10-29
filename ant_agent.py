@@ -50,6 +50,8 @@ class Ant(Agent):
     # home going based on the self pheromone
     def go_home(self):
         back_path = self.smell_neighborhood_for(self)
+        if self.last_position in back_path:
+            del back_path[self.last_position]
         if back_path:
             new_position = self.random.choices(list(back_path), weights=back_path.values(), k=1)[0]
         else:
@@ -106,9 +108,10 @@ class Ant(Agent):
         return smells
 
     # take food from the food_site
-    def take_food(self, food_site) -> None:
+    def take_food(self, food_site):
         self.cargo = min(self.size * ANT_SIZE_CARGO_RATIO, food_site.food_units)
         food_site.food_units -= self.cargo
+        self.last_position = self.coordinates
 
     # leave food at the colony
     def leave_food(self, colony):

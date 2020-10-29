@@ -4,11 +4,12 @@ from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import ChartModule
 import random
+
 # TODO text of food inside colony
 
 N_species = 3
-N_food_sites = 10
-width = height = 10
+N_food_sites = 5
+width = height = 20
 
 colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
            for i in range(N_species)]
@@ -18,22 +19,20 @@ labels = ["Species {}".format(s_id) for s_id in range(N_species)]
 def agent_portrayal(agent):
     if isinstance(agent, Ant):
         portrayal = {"Shape": "circle",
-                     "Filled": "true",
-                     "Layer": 0,
+                     "Filled": "False",
+                     "Layer": 1,
                      "Color": colours[agent.species.id],
-                     "r": 0.5}
+                     "r": agent.size * 0.4}
         if agent.cargo > 0:
-            portrayal = {"Shape": "circle",
-                         "Filled": "false",
-                         "Layer": 0,
-                         "Color": "green",
-                         "r": 0.5}
+            portrayal["Filled"] = "True"
+            portrayal["Layer"] = 1
+
     elif type(agent) is Colony:
         portrayal = {"Shape": "circle",
                      "Filled": "true",
                      "Layer": 0,
                      "Color": colours[agent.species.id],
-                     "r": 2.0}
+                     "r": agent.species.ant_size}
     elif type(agent) is FoodSite:
         portrayal = {"Shape": "rect",
                      "w": 1.5,

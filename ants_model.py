@@ -9,7 +9,6 @@ ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
-SIZE_SELF_PHEROMONE_RATIO = 20
 
 
 # killed ant produces pheromone crying for help
@@ -53,22 +52,18 @@ class FoodSite(Agent):
             self.model.grid.remove_agent(self)
 
 
-# class Queen(Ant):
-#     def __init__(self, unique_id, model, species, size):
-#         super().__init__(unique_id, model, species, size)
-
-
 class Colony(Agent):
     def __init__(self, unique_id, model, species: Species, coordinates):
         super().__init__(unique_id, model)
         self.species = species
-        self.food_units = 50
+        self.food_units = 10
         self.coordinates = coordinates
         self.ants_inside = []
         self.turn_counter = 0
 
     def release_ant(self):
         ant = self.ants_inside.pop()
+
         ant_coordinates = self.random.choice(
             list(
                 filter(lambda c: self.model.grid.is_cell_empty(c),
@@ -76,6 +71,8 @@ class Colony(Agent):
             )
         )
         ant.coordinates = ant_coordinates
+        ant_orientation = (ant_coordinates[0] - self.coordinates[0], ant_coordinates[1] - self.coordinates[1])
+        ant.orientation = ant_orientation
         self.model.grid.place_agent(ant, ant_coordinates)
 
     def step(self):

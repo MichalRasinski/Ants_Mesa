@@ -8,9 +8,9 @@ ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 SIZE_PHEROMONE_RATIO = 20
+SELF_PHEROMONE_RATIO = 50
 
 
-# TODO Orientation and visualisation as arrows
 # TODO pheromone path
 # TODO energy
 # TODO colony decides whether to release ants based on food supplies
@@ -24,7 +24,11 @@ class Ant(Agent):
         self.species = species
         self.cargo = 0
         self.last_position = coordinates
-        # self.orientation = None
+        self.orientation = None
+
+    def update_orientation(self):
+        self.orientation = (self.coordinates[0] - self.last_position[0],
+                            self.coordinates[1] - self.last_position[1])
 
     # Move to the given cell if it is empty if not do nothing. Returns whether move was done.
     def move(self, new_position):
@@ -52,50 +56,66 @@ class Ant(Agent):
 
     # home going based on the self pheromone
     def go_home(self):
-        back_path = self.smell_neighborhood_for(self)
-        if self.last_position in back_path:
-            del back_path[self.last_position]
-        if back_path:
-            new_position = self.random.choices(list(back_path), weights=back_path.values(), k=1)[0]
+        moves, weights = self.find_straight_path_points("wide")  # narrow possibly is better, but problem at food site
+        new_pos = self.random.choice(moves)
+
+        food_trail = self.smell_cells_for("food trail", moves)
+        if list(food_trail):
+            new_pos = self.random.choices(list(food_trail), weights=food_trail.values(), k=1)[0]
         else:
-            possible_moves = self.model.pheromone_map.get_neighborhood(self.coordinates, moore=True)
-            new_position = self.random.choice(possible_moves)
-        self.move(new_position)
+            self_trail = self.smell_cells_for(self, moves)
+            if self_trail:
+                new_pos = self.random.choices(list(self_trail), weights=self_trail.values(), k=1)[0]
+
+        self.move(new_pos)
         self.leave_pheromone("food trail", SIZE_PHEROMONE_RATIO)
 
     def go_forage(self):
-        if self.last_position == self.coordinates:
-            new_pos = self.random.choice(self.model.grid.get_neighborhood(self.coordinates, moore=True))
-        elif list(self.smell_neighborhood_for("food")):
-            new_pos = self.random.choice(list(self.smell_neighborhood_for("food")))
+        moves, weights = self.find_straight_path_points("wide")
+        if list(self.smell_cells_for("food", moves)):
+            new_pos = self.random.choice(list(self.smell_cells_for("food", moves)))
+
+        elif list(self.smell_cells_for("food trail", moves)):
+            free_cells = list(filter(self.model.grid.is_cell_empty, self.smell_cells_for("food trail", moves)))
+            if free_cells:
+                new_pos = self.random.choice(free_cells)
+            else:
+
+                new_pos = self.random.choices(moves, weights, k=1)[0]
+
         else:
-            moves, weights = self.find_straight_path_points()
             if moves:
                 new_pos = self.random.choices(moves, weights, k=1)[0]
             else:
-                moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
-                moves.remove(self.last_position)
-                new_pos = self.random.choice(moves)
+                new_pos = self.choose_random_path()
         self.move(new_pos)
-        self.leave_pheromone(self, SIZE_PHEROMONE_RATIO)
+        self.leave_pheromone(self, SELF_PHEROMONE_RATIO)
+
+    def choose_random_path(self):
+        moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
+        moves.remove(self.last_position)
+        return self.random.choice(moves)
 
     # Finds more or less straight path based on intersection of current neighborhood and the neighborhood of
     # the next point that lies in the direction the ant is going. If no such points then take random except
     # the last position
-    def find_straight_path_points(self):
-        dx = self.coordinates[0] - self.last_position[0]
-        dy = self.coordinates[1] - self.last_position[1]
-        point_on_trajectory = self.coordinates[0] + dx, self.coordinates[1] + dy
-        first_neighborhood = set(self.model.grid.get_neighborhood(self.coordinates, moore=True, include_center=False))
-        second_neighborhood = set(
-            self.model.grid.get_neighborhood(point_on_trajectory, moore=False, include_center=True))
-        possible_moves = list(first_neighborhood & second_neighborhood)
-        move_weights = [8 if pos == point_on_trajectory else 1 for pos in possible_moves]
+    def find_straight_path_points(self, w_or_n):
+        next_point = self.coordinates[0] + self.orientation[0], self.coordinates[1] + self.orientation[1]
+        if w_or_n == "wide":
+            first_neighborhood = set(
+                self.model.grid.get_neighborhood(self.coordinates, moore=True, include_center=False))
+            second_neighborhood = set(
+                self.model.grid.get_neighborhood(self.last_position, moore=False, include_center=True))
+            possible_moves = list(first_neighborhood - second_neighborhood)
+
+        elif w_or_n == "narrow":
+            first_neighborhood = set(self.model.grid.get_neighborhood(self.coordinates, moore=True, include_center=False))
+            second_neighborhood = set(
+                self.model.grid.get_neighborhood(next_point, moore=False, include_center=True))
+            possible_moves = list(first_neighborhood & second_neighborhood)
+
+        move_weights = [8 if pos == next_point else 1 for pos in possible_moves]
         return possible_moves, move_weights
-        # if not possible_moves:
-        #     possible_moves = self.model.grid.get_neighborhood(self.coordinates, moore=True)
-        #     possible_moves.remove(self.last_position)
-        # return self.random.choices(possible_moves, move_weights, k=1)[0]
 
     # go in search for food, leave self-pheromone
 
@@ -103,9 +123,9 @@ class Ant(Agent):
         x, y = self.coordinates
         self.model.pheromone_map[x][y][smell] += strength * self.size
 
-    def smell_neighborhood_for(self, smell):
+    def smell_cells_for(self, smell, cells):
         smells = {}
-        for x, y in self.model.pheromone_map.iter_neighborhood(self.coordinates, moore=True):
+        for x, y in cells:
             if self.model.pheromone_map[x][y][smell] > 0:
                 smells[(x, y)] = self.model.pheromone_map[x][y][smell]
         return smells
@@ -145,3 +165,5 @@ class Ant(Agent):
                 self.take_food(objects["food"][0])
             else:
                 self.go_forage()
+
+        self.update_orientation()

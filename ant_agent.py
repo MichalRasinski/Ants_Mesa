@@ -67,8 +67,9 @@ class Ant(Agent):
             if self_trail:
                 new_pos = self.random.choices(list(self_trail), weights=self_trail.values(), k=1)[0]
 
-        self.move(new_pos)
-        self.leave_pheromone("food trail", SIZE_PHEROMONE_RATIO)
+        self_moved = self.move(new_pos)
+        if self_moved:
+            self.leave_pheromone("food trail", SIZE_PHEROMONE_RATIO)
 
     def go_forage(self):
         moves, weights = self.find_straight_path_points("wide")
@@ -109,7 +110,8 @@ class Ant(Agent):
             possible_moves = list(first_neighborhood - second_neighborhood)
 
         elif w_or_n == "narrow":
-            first_neighborhood = set(self.model.grid.get_neighborhood(self.coordinates, moore=True, include_center=False))
+            first_neighborhood = set(
+                self.model.grid.get_neighborhood(self.coordinates, moore=True, include_center=False))
             second_neighborhood = set(
                 self.model.grid.get_neighborhood(next_point, moore=False, include_center=True))
             possible_moves = list(first_neighborhood & second_neighborhood)
@@ -130,17 +132,21 @@ class Ant(Agent):
                 smells[(x, y)] = self.model.pheromone_map[x][y][smell]
         return smells
 
+    def turn_around(self):
+        self.last_position[0] += self.orientation[0]
+        self.last_position[1] += self.orientation[1]
+
     # take food from the food_site
     def take_food(self, food_site):
         self.cargo = min(self.size * ANT_SIZE_CARGO_RATIO, food_site.food_units)
         food_site.food_units -= self.cargo
-        self.last_position = food_site.coordinates
+        self.turn_around()
 
     # leave food at the colony
     def leave_food(self, colony):
         colony.food_units += self.cargo
         self.cargo = 0
-        self.last_position = colony.coordinates
+        self.turn_around()
 
     # just die
     def die(self):

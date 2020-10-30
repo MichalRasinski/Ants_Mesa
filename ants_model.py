@@ -67,11 +67,23 @@ class Colony(Agent):
         self.ants_inside = []
         self.turn_counter = 0
 
+    def release_ant(self):
+        ant = self.ants_inside.pop()
+        ant_coordinates = self.random.choice(
+            list(
+                filter(lambda c: self.model.grid.is_cell_empty(c),
+                       self.model.grid.get_neighborhood(self.coordinates, moore=True))
+            )
+        )
+        ant.coordinates = ant_coordinates
+        self.model.grid.place_agent(ant, ant_coordinates)
+
     def step(self):
         # self.food_units -= self.ants_inside * self.species.ant_size
         self.turn_counter += 1
 
         ants_to_spawn = self.turn_counter // self.species.base_reproduction_rate
+        self.turn_counter %= self.species.base_reproduction_rate
         if ants_to_spawn and self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
             self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
             self.turn_counter -= self.species.base_reproduction_rate
@@ -80,17 +92,11 @@ class Colony(Agent):
             self.ants_inside.append(ant)
             self.model.schedule.add(ant)
 
-        ants_to_release = self.turn_counter // self.species.base_reproduction_rate
-        if ants_to_release:
-            ant = self.ants_inside.pop()
-            ant_coordinates = self.random.choice(
-                list(
-                    filter(lambda c: self.model.grid.is_cell_empty(c),
-                           self.model.grid.get_neighborhood(self.coordinates, moore=True))
-                )
-            )
-            ant.coordinates = ant_coordinates
-            self.model.grid.place_agent(ant, ant_coordinates)
+        if self.ants_inside and list(
+                filter(lambda c: self.model.grid.is_cell_empty(c),
+                       self.model.grid.get_neighborhood(self.coordinates, moore=True))
+        ):
+            self.release_ant()
 
 
 class AntsWorld(Model):

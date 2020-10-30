@@ -7,9 +7,9 @@ import random
 
 # TODO text of food inside colony
 
-N_species = 3
+N_species = 1
 N_food_sites = 10
-width = height = 20
+width = height = 25
 
 colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
            for i in range(N_species)]
@@ -19,14 +19,14 @@ labels = ["Species {}".format(s_id) for s_id in range(N_species)]
 def agent_portrayal(agent):
     if isinstance(agent, Ant):
         portrayal = {"Shape": "circle",
-                     "Filled": "False",
+                     "Filled": "false",
                      "Layer": 1,
                      "Color": colours[agent.species.id],
-                     "r": agent.size * 0.4}
+                     "r": agent.size * 0.5}
         if agent.cargo > 0:
-            portrayal["Filled"] = "True"
+            portrayal["Filled"] = True
             portrayal["Layer"] = 1
-
+            portrayal["Color"] = "green"
     elif type(agent) is Colony:
         portrayal = {"Shape": "circle",
                      "Filled": "true",

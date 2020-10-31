@@ -8,7 +8,7 @@ import random
 # TODO text of food inside colony
 
 N_species = 1
-N_food_sites = 10
+N_food_sites = 6
 width = height = 25
 
 colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])

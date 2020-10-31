@@ -95,7 +95,7 @@ class Colony(Agent):
 
 
 class AntsWorld(Model):
-    def __init__(self, N_species, N_food_sites, width, height, ):
+    def __init__(self, N_species, N_food_sites, width, height):
         super().__init__()
         self.N_food_sites = N_food_sites
         self.N_species = N_species

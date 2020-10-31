@@ -40,6 +40,13 @@ def agent_portrayal(agent):
                      "Filled": "true",
                      "Layer": 0,
                      "Color": "Yellow"}
+    elif type(agent) is Obstacle:
+        portrayal = {"Shape": "rect",
+                     "w": 1,
+                     "h": 1,
+                     "Filled": "true",
+                     "Layer": 0,
+                     "Color": "Black"}
     return portrayal
 
 

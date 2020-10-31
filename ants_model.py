@@ -34,6 +34,11 @@ class Species:
         self.ant_size = ant_size
 
 
+class Obstacle(Agent):
+    def __init__(self, unique_id, model):
+        super().__init__(unique_id, model)
+
+
 class FoodSite(Agent):
     def __init__(self, unique_id, model, initial_food_units, coordinates, regeneration_rate=0):
         super().__init__(unique_id, model)
@@ -111,23 +116,19 @@ class AntsWorld(Model):
         )
         # Create agents
         for i in range(self.N_species):
-            x = self.random.randrange(self.grid.width)
-            y = self.random.randrange(self.grid.height)
-            while not self.grid.is_cell_empty((x, y)):
-                x = self.random.randrange(self.grid.width)
-                y = self.random.randrange(self.grid.height)
+            x, y = self.random.choice(list(self.grid.empties))
             c = Colony(self.next_id(), self, Species(i + 1, i + 10, i), (x, y))
             self.schedule.add(c)
             self.grid.place_agent(c, (x, y))
         for _ in range(self.N_food_sites):
-            x = self.random.randrange(self.grid.width)
-            y = self.random.randrange(self.grid.height)
-            while not self.grid.is_cell_empty((x, y)):
-                x = self.random.randrange(self.grid.width)
-                y = self.random.randrange(self.grid.height)
+            x, y = self.random.choice(list(self.grid.empties))
             fs = FoodSite(self.next_id(), self, self.random.randrange(50), (x, y), 0 * self.random.random())
             self.schedule.add(fs)
             self.grid.place_agent(fs, (x, y))
+        for _ in range(self.N_food_sites * 2):
+            x, y = self.random.choice(list(self.grid.empties))
+            obs = Obstacle(self.next_id(), self)
+            self.grid.place_agent(obs, (x, y))
 
     def step(self):
         self.data_collector.collect(self)

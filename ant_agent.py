@@ -7,7 +7,7 @@ import random
 ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
-SIZE_PHEROMONE_RATIO = 30
+SIZE_PHEROMONE_RATIO = 40
 SELF_PHEROMONE_RATIO = 80
 MAX_PHEROMONE_STRENGTH = 1000
 
@@ -25,6 +25,7 @@ class Ant(Agent):
         self.species = species
         self.cargo = 0
         self.last_pos = pos
+        self.energy = 100
         self.orientation = None
         self.forage = False
         self.lost = False
@@ -168,12 +169,19 @@ class Ant(Agent):
         self.model.grid.remove_agent(self)
         self.anthill.ants_inside.append(self)
 
+    def eat(self):
+        e_diff = 100 - self.energy
+        to_eat = min(e_diff / self.species.food_energy, self.anthill.food_units)
+        self.energy += to_eat * self.species.food_energy
+        self.anthill.food_units -= to_eat
+
     # just die
     def die(self):
         self.model.schedule.remove(self)
-        self.model.grid.remove_agent(self)
         if self in self.anthill.ants_inside:
             self.anthill.ants_inside.remove(self)
+        else:
+            self.model.grid.remove_agent(self)
 
     def step(self):
         # height = self.model.pheromone_map.height
@@ -181,12 +189,15 @@ class Ant(Agent):
         #                range(height - 1, -1, -1)]
         # food_trails = np.array(food_trails)
         # TODO improve this
-        if self.health <= 0:
+        if self.health <= 0 or not self.energy:
             self.die()
             return
         elif self in self.anthill.ants_inside:
+            if self.energy < 80:
+                self.eat()
             return
 
+        self.energy -= 1
         self.leave_pheromone(self, SELF_PHEROMONE_RATIO)
 
         objects = self.sense_neighborhood()

@@ -34,6 +34,7 @@ class Species:
         self.id = id
         self.base_reproduction_rate = base_reproduction_rate
         self.ant_size = ant_size
+        self.food_energy = 100 / self.ant_size
 
 
 class Obstacle(Agent):

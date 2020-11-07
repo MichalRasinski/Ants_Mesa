@@ -102,10 +102,8 @@ class Anthill(Agent):
 
         if self.ants_inside and free_surrounding_cells:
             ant = self.ants_inside[0]
-            print(list(ant.smell_cells_for("food trail", self.surrounding_cells)))
 
             if list(ant.smell_cells_for("food trail", self.surrounding_cells)):
-                print(list(ant.smell_cells_for("food trail", self.surrounding_cells)))
                 self.release_ant()
             elif self.turn_counter % 30 < 2:
                 self.release_ant()
@@ -135,7 +133,7 @@ class AntsWorld(Model):
             self.grid.place_agent(c, (x, y))
         for _ in range(self.N_food_sites):
             x, y = random.choice(list(self.grid.empties))
-            fs = FoodSite(self.next_id(), self, random.randrange(150), (x, y), random.choice([0, 2]))
+            fs = FoodSite(self.next_id(), self, random.randrange(100), (x, y), 0)
             self.schedule.add(fs)
             self.grid.place_agent(fs, (x, y))
         for _ in range(self.N_obstacles):

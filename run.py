@@ -3,19 +3,15 @@ from ant_agent import *
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import ChartModule
+from mesa.visualization.UserParam import UserSettableParameter
+
 import random
 
 # TODO text of food inside colony
 
-N_species = 1
-N_food_sites = 6
-N_obstacles = 20
-width = height = 40
-
-# colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-#            for i in range(N_species)]
-colours = ["blue"]
-labels = ["Species {}".format(s_id) for s_id in range(N_species)]
+MAX_N_SPECIES = 10
+width = height = 50
+MAX_N_OBJECTS = width * height / 3
 
 
 def agent_portrayal(agent):
@@ -56,15 +52,25 @@ def agent_portrayal(agent):
     return portrayal
 
 
+model_params = {
+    "N_species": UserSettableParameter("slider", "Number of Competing Colonies", 1, 1, MAX_N_SPECIES),
+    "N_food_sites": UserSettableParameter("number", "Initial Number of Spots with Food", 15, 0, MAX_N_OBJECTS),
+    "N_obstacles": UserSettableParameter("number", "Number of Obstacles", 15, 0, MAX_N_OBJECTS),
+    "width": width,
+    "height": height
+}
+colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+           for i in range(MAX_N_SPECIES)]
+labels = ["Species {}".format(s_id) for s_id in range(MAX_N_SPECIES)]
+
+map = CanvasGrid(agent_portrayal, width, height)
 chart = ChartModule(
     [{"Label": label, "Color": colour} for label, colour in zip(labels, colours)],
     data_collector_name='data_collector'
 )
-map = CanvasGrid(agent_portrayal, width, height)
 server = ModularServer(AntsWorld,
                        [map, chart],
                        "Ants World",
-                       {"N_species": N_species, "N_food_sites": N_food_sites, "N_obstacles": N_obstacles,
-                        "width": width, "height": height})
+                       model_params)
 server.port = 8521  # The default
 server.launch()

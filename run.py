@@ -23,11 +23,15 @@ def agent_portrayal(agent):
                      "Layer": 1,
                      "Color": colours[agent.species.id],
                      "r": agent.size * 0.5}
-        if agent.cargo > 0:
-            portrayal["Filled"] = True
-            portrayal["Layer"] = 1
+        if agent.forage:
+            portrayal["Color"] = "brown"
+        if agent.cargo:
             portrayal["Color"] = "green"
-    elif type(agent) is Colony:
+        if agent.lost:
+            portrayal["Color"] = "red"
+            if agent.cargo:
+                portrayal["Color"] = "yellow"
+    elif type(agent) is Anthill:
         portrayal = {"Shape": "circle",
                      "Filled": "true",
                      "Layer": 0,
@@ -35,8 +39,8 @@ def agent_portrayal(agent):
                      "r": agent.species.ant_size}
     elif type(agent) is FoodSite:
         portrayal = {"Shape": "rect",
-                     "w": 1.5,
-                     "h": 1.5,
+                     "w": 1,
+                     "h": 1,
                      "Filled": "true",
                      "Layer": 0,
                      "Color": "Yellow"}

@@ -9,10 +9,12 @@ import random
 
 N_species = 1
 N_food_sites = 6
-width = height = 25
+N_obstacles = 20
+width = height = 40
 
-colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-           for i in range(N_species)]
+# colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+#            for i in range(N_species)]
+colours = ["blue"]
 labels = ["Species {}".format(s_id) for s_id in range(N_species)]
 
 
@@ -62,6 +64,7 @@ map = CanvasGrid(agent_portrayal, width, height)
 server = ModularServer(AntsWorld,
                        [map, chart],
                        "Ants World",
-                       {"N_species": N_species, "N_food_sites": N_food_sites, "width": width, "height": height})
+                       {"N_species": N_species, "N_food_sites": N_food_sites, "N_obstacles": N_obstacles,
+                        "width": width, "height": height})
 server.port = 8521  # The default
 server.launch()

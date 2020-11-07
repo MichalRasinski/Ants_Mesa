@@ -7,8 +7,9 @@ import random
 ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
-SIZE_PHEROMONE_RATIO = 20
-SELF_PHEROMONE_RATIO = 50
+SIZE_PHEROMONE_RATIO = 30
+SELF_PHEROMONE_RATIO = 80
+MAX_PHEROMONE_STRENGTH = 1000
 
 
 # TODO energy
@@ -75,9 +76,11 @@ class Ant(Agent):
         self.move(new_pos)
 
     def go_random(self):
-        moves = self.neighborhood(8)
-        moves.remove(self.last_pos)
-        return random.choice(moves)
+        moves = self.find_straight_path_points("wide")
+        moves = list(set(moves) & self.model.grid.empties)
+        if moves:
+            weights = self.weigh_straight_path_points(moves, w=4)
+            self.move(random.choices(moves, weights)[0])
 
     def go_down_the_trail(self, pheromone):
         destiny_cell = None
@@ -85,8 +88,11 @@ class Ant(Agent):
         empty_cells = set(moves) & self.model.grid.empties
         if not empty_cells:
             self.turn_around()
+            return
 
         trail = self.smell_cells_for(pheromone, moves)
+        if list(trail):
+            destiny_cell = "occupied"
         empty_trail_cells = list(set(trail) & empty_cells)
 
         if empty_trail_cells:
@@ -103,7 +109,9 @@ class Ant(Agent):
             if possible_trail_moves:
                 destiny_cell = random.choice(possible_trail_moves)
 
-        if destiny_cell:
+        if destiny_cell == "occupied":
+            pass
+        elif destiny_cell:
             self.move(destiny_cell)
         else:
             self.turn_around()
@@ -124,14 +132,15 @@ class Ant(Agent):
 
         return possible_moves
 
-    def weigh_straight_path_points(self, moves):
+    def weigh_straight_path_points(self, moves, w=6):
         next_point = self.pos[0] + self.orientation[0], self.pos[1] + self.orientation[1]
-        move_weights = [6 if pos == next_point else 1 for pos in moves]
+        move_weights = [w if pos == next_point else 1 for pos in moves]
         return move_weights
 
     def leave_pheromone(self, smell, strength):
         x, y = self.pos
-        self.model.pheromone_map[x][y][smell] += strength * self.size
+        self.model.pheromone_map[x][y][smell] = min(self.model.pheromone_map[x][y][smell] + strength * self.size,
+                                                    MAX_PHEROMONE_STRENGTH)
 
     def smell_cells_for(self, smell, cells):
         smells = {}
@@ -167,7 +176,6 @@ class Ant(Agent):
             self.anthill.ants_inside.remove(self)
 
     def step(self):
-
         # height = self.model.pheromone_map.height
         # food_trails = [[self.model.pheromone_map[x][y]["food trail"] for x in range(height)] for y in
         #                range(height - 1, -1, -1)]
@@ -197,6 +205,14 @@ class Ant(Agent):
             if self.pos in self.anthill.surrounding_cells:
                 self.enter_anthill()
             else:
-                self.go_down_the_trail(self)
+                food_trail = self.smell_cells_for("food trail", self.find_straight_path_points("wide"))
+                self_trail = self.smell_cells_for("food trail", self.find_straight_path_points("wide"))
+
+                if list(food_trail):
+                    self.go_down_the_trail("food trail")
+                elif list(self_trail):
+                    self.go_down_the_trail(self)
+                else:
+                    self.go_random()
         else:
             self.go_down_the_trail("food trail")

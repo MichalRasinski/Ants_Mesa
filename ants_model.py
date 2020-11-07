@@ -88,10 +88,11 @@ class Anthill(Agent):
 
     def step(self):
         # self.food_units -= self.ants_inside * self.species.ant_size
+        spawn_ant = False
         self.turn_counter += 1
         free_surrounding_cells = set(self.surrounding_cells) & self.model.grid.empties
-        spawn_ant = self.turn_counter // self.species.base_reproduction_rate
-        self.turn_counter %= self.species.base_reproduction_rate
+        if self.turn_counter % self.species.base_reproduction_rate == 0:
+            spawn_ant = True
         if spawn_ant and self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
             self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
             ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.pos, self)
@@ -105,13 +106,14 @@ class Anthill(Agent):
             if list(ant.smell_cells_for("food trail", self.surrounding_cells)):
                 print(list(ant.smell_cells_for("food trail", self.surrounding_cells)))
                 self.release_ant()
-            elif self.food_units < 5:
+            elif self.turn_counter % 30 < 2:
                 self.release_ant()
 
 
 class AntsWorld(Model):
-    def __init__(self, N_species, N_food_sites, width, height):
+    def __init__(self, N_species, N_food_sites, N_obstacles, width, height):
         super().__init__()
+        self.N_obstacles = N_obstacles
         self.N_food_sites = N_food_sites
         self.N_species = N_species
         self.grid = SingleGrid(width, height, False)
@@ -132,10 +134,10 @@ class AntsWorld(Model):
             self.grid.place_agent(c, (x, y))
         for _ in range(self.N_food_sites):
             x, y = random.choice(list(self.grid.empties))
-            fs = FoodSite(self.next_id(), self, random.randrange(50), (x, y), 0 * random.random())
+            fs = FoodSite(self.next_id(), self, random.randrange(150), (x, y), random.choice([0, 2]))
             self.schedule.add(fs)
             self.grid.place_agent(fs, (x, y))
-        for _ in range(self.N_food_sites * 2):
+        for _ in range(self.N_obstacles):
             x, y = random.choice(list(self.grid.empties))
             obs = Obstacle(self.next_id(), self)
             self.grid.place_agent(obs, (x, y))

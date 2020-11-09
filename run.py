@@ -20,17 +20,19 @@ def agent_portrayal(agent):
                      "Filled": "false",
                      "Layer": 1,
                      "Color": colours[agent.species.id],
-                     "r": agent.size * 0.5,
-                     "text": agent.unique_id,
-                     "text_color": colours[agent.species.id]}
-        if agent.forage:
-            portrayal["text_color"] = "brown"
-        if agent.cargo:
-            portrayal["text_color"] = "green"
-        if agent.lost:
-            portrayal["text_color"] = "red"
-            if agent.cargo:
-                portrayal["text_color"] = "yellow"
+                     "r": agent.size * 0.5}
+    if isinstance(agent, Queen):
+        portrayal["r"] = agent.size
+        # "text": agent.unique_id,
+        # "text_color": colours[agent.species.id]}
+        # if agent.forage:
+        #     portrayal["text_color"] = "brown"
+        # if agent.cargo:
+        #     portrayal["text_color"] = "green"
+        # if agent.lost:
+        #     portrayal["text_color"] = "red"
+        #     if agent.cargo:
+        #         portrayal["text_color"] = "yellow"
     elif type(agent) is Anthill:
         portrayal = {"Shape": "circle",
                      "Filled": "true",

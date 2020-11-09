@@ -13,6 +13,7 @@ FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 SELF_PHEROMONE_RATIO = 50
 
 
+# ToDO QUEENS
 # killed ant produces pheromone crying for help
 # killed ant is a source of food
 # starving ant may ask for food another ant
@@ -110,25 +111,36 @@ class Anthill(Agent):
 
 
 class AntsWorld(Model):
-    def __init__(self, N_species, N_food_sites, N_obstacles, width, height):
+    def __init__(self, N_food_sites, N_obstacles, width, height, **kwargs):
         super().__init__()
         self.N_obstacles = N_obstacles
         self.N_food_sites = N_food_sites
-        self.N_species = N_species
         self.grid = SingleGrid(width, height, False)
         self.schedule = RandomActivation(self)
         self.pheromone_map = Grid(width, height, False)
         for x in range(width):
             for y in range(height):
                 self.pheromone_map[x][y] = defaultdict(lambda: 0)
+        species_list = []
+        for x in range(len(list(kwargs)) // 3):
+            if kwargs["include_{}".format(x)]:
+                species_list.append(
+                    Species(
+                        kwargs["ant_size_{}".format(x)],
+                        kwargs["reproduction_rate_{}".format(x)],
+                        len(species_list)
+                    )
+                )
+
         self.data_collector = DataCollector(
             model_reporters={"Species {}".format(s_id): (lambda id: (lambda m: count_ants(m, id)))(s_id) for s_id in
-                             range(self.N_species)}
+                             range(len(species_list))}
         )
+
         # Create agents
-        for i in range(self.N_species):
+        for species in species_list:
             x, y = random.choice(list(self.grid.empties))
-            c = Anthill(self.next_id(), self, Species(i + 1, i + 10, i), (x, y))
+            c = Anthill(self.next_id(), self, species, (x, y))
             self.schedule.add(c)
             self.grid.place_agent(c, (x, y))
         for _ in range(self.N_food_sites):

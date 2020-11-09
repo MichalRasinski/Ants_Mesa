@@ -9,10 +9,9 @@ SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 SIZE_PHEROMONE_RATIO = 40
 SELF_PHEROMONE_RATIO = 80
-MAX_PHEROMONE_STRENGTH = 1000
+MAX_PHEROMONE_STRENGTH = 100
 
 
-# TODO energy
 # TODO colony decides whether to release ants based on food supplies
 # TODO follow the path
 class Ant(Agent):
@@ -29,6 +28,7 @@ class Ant(Agent):
         self.orientation = None
         self.forage = False
         self.lost = False
+        self.pheromone_strength = 0
 
     def update_orientation(self):
         self.orientation = (self.pos[0] - self.last_pos[0], self.pos[1] - self.last_pos[1])
@@ -46,7 +46,7 @@ class Ant(Agent):
         self.pos = new_position
         self.update_orientation()
         if self.cargo and not self.lost:
-            self.leave_pheromone("food trail", SIZE_PHEROMONE_RATIO)
+            self.leave_pheromone("food trail", self.pheromone_strength)
 
     # get dictionary of objects in the 8-neighbourhood
     def sense_neighborhood(self):
@@ -92,8 +92,7 @@ class Ant(Agent):
             return
 
         trail = self.smell_cells_for(pheromone, moves)
-        if list(trail):
-            destiny_cell = "occupied"
+        destiny_cell = "occupied" if list(trail) else None
         empty_trail_cells = list(set(trail) & empty_cells)
 
         if empty_trail_cells:
@@ -158,7 +157,8 @@ class Ant(Agent):
     def take_food(self, food_site):
         self.cargo = min(self.size * ANT_SIZE_CARGO_RATIO, food_site.food_units)
         food_site.food_units -= self.cargo
-        self.leave_pheromone("food trail", SIZE_PHEROMONE_RATIO)
+        self.pheromone_strength = food_site.food_units / 3
+        self.leave_pheromone("food trail", self.pheromone_strength)
         self.turn_around()
 
     def enter_anthill(self):
@@ -188,7 +188,6 @@ class Ant(Agent):
         # food_trails = [[self.model.pheromone_map[x][y]["food trail"] for x in range(height)] for y in
         #                range(height - 1, -1, -1)]
         # food_trails = np.array(food_trails)
-        # TODO improve this
         if self.health <= 0 or not self.energy:
             self.die()
             return

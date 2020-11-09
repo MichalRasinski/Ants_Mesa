@@ -14,15 +14,14 @@ SELF_PHEROMONE_RATIO = 50
 
 
 # ToDO QUEENS
-# killed ant produces pheromone crying for help
+# killed ant produces pheromone calling for help
 # killed ant is a source of food
 # starving ant may ask for food another ant
 
 def sign(x):
     if x == 0:
         return 0
-    else:
-        return x // abs(x)
+    return x // abs(x)
 
 
 def count_ants(model, species_id):
@@ -62,17 +61,21 @@ class FoodSite(Agent):
 
 
 class Anthill(Agent):
-    def __init__(self, unique_id, model, species: Species, coordinates):
+    def __init__(self, unique_id, model, species, pos, food_units=50):
         super().__init__(unique_id, model)
         self.species = species
-        self.food_units = 10
-        self.pos = coordinates
+        self.food_units = food_units
+        self.pos = pos
         self.ants_inside = []
+        self.queens_inside = []
         self.turn_counter = 0
         self.surrounding_cells = self.model.grid.get_neighborhood(self.pos, moore=True)
 
     def release_ant(self):
-        ant = self.ants_inside.pop()
+        if self.queens_inside:
+            ant = self.queens_inside.pop()
+        else:
+            ant = self.ants_inside.pop(0)
         pheromone_cells = ant.smell_cells_for("food trail", self.surrounding_cells)
         possible_locations = list(set(self.surrounding_cells) & self.model.grid.empties)
         weights = [1 for pl in possible_locations]
@@ -81,29 +84,31 @@ class Anthill(Agent):
             ant.forage = True
 
         if set(pheromone_cells) & self.model.grid.empties:
-            ant.forage = False
             possible_locations = list(set(pheromone_cells) & self.model.grid.empties)
             weights = [pheromone_cells[pl] for pl in possible_locations]
-        ant.coordinates = random.choices(possible_locations, weights)[0]
-        ant.orientation = (ant.coordinates[0] - self.pos[0], ant.coordinates[1] - self.pos[1])
-        self.model.grid.place_agent(ant, ant.coordinates)
+        ant.pos = random.choices(possible_locations, weights)[0]
+        ant.orient = (ant.pos[0] - self.pos[0], ant.pos[1] - self.pos[1])
+        self.model.grid.place_agent(ant, ant.pos)
 
     def step(self):
-        # self.food_units -= self.ants_inside * self.species.ant_size
-        spawn_ant = False
         self.turn_counter += 1
         free_surrounding_cells = set(self.surrounding_cells) & self.model.grid.empties
         if self.turn_counter % self.species.base_reproduction_rate == 0:
-            spawn_ant = True
-        if spawn_ant and self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
-            self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
-            ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.pos, self)
-            self.ants_inside.append(ant)
-            self.model.schedule.add(ant)
+            if self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
+                self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
+                if self.turn_counter % 100 > 90:
+                    ant = ant_agent.Queen(self.model.next_id(), self.model, self.species, self.pos, self)
+                    self.queens_inside.append(ant)
+                else:
+                    ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.pos, self)
+                    self.ants_inside.append(ant)
+                self.model.schedule.add(ant)
 
-        if self.ants_inside and free_surrounding_cells:
-            ant = self.ants_inside[0]
-
+        if (self.ants_inside or self.queens_inside) and free_surrounding_cells:
+            if self.ants_inside:
+                ant = self.ants_inside[0]
+            else:
+                ant = self.queens_inside[0]
             if list(ant.smell_cells_for("food trail", self.surrounding_cells)):
                 self.release_ant()
             elif self.turn_counter % 30 < 2:
@@ -140,9 +145,9 @@ class AntsWorld(Model):
         # Create agents
         for species in species_list:
             x, y = random.choice(list(self.grid.empties))
-            c = Anthill(self.next_id(), self, species, (x, y))
-            self.schedule.add(c)
-            self.grid.place_agent(c, (x, y))
+            ah = Anthill(self.next_id(), self, species, (x, y))
+            self.schedule.add(ah)
+            self.grid.place_agent(ah, (x, y))
         for _ in range(self.N_food_sites):
             x, y = random.choice(list(self.grid.empties))
             fs = FoodSite(self.next_id(), self, random.randrange(100), (x, y), 0)

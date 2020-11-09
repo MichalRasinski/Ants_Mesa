@@ -20,7 +20,7 @@ def agent_portrayal(agent):
                      "Filled": "false",
                      "Layer": 1,
                      "Color": colours[agent.species.id],
-                     "r": agent.size * 0.0,
+                     "r": agent.size * 0.5,
                      "text": agent.unique_id,
                      "text_color": colours[agent.species.id]}
         if agent.forage:
@@ -63,11 +63,12 @@ model_params = {
 }
 for i in range(MAX_N_SPECIES):
     model_params.update(
-        {"include_{}".format(i): UserSettableParameter("checkbox", "Include species {}".format(i), False)})
+        {"include_{}".format(i): UserSettableParameter("checkbox", "Include species {}".format(i),
+                                                       False if i > 1 else True)})
     model_params.update({"reproduction_rate_{}".format(i): UserSettableParameter(
-        "slider", "Reproduction Rate of Species {}".format(i), value=1, min_value=1, max_value=3, step=0.1)})
+        "slider", "Reproduction Rate of Species {}".format(i), value=1, min_value=1, max_value=3, step=0.2)})
     model_params.update({"ant_size_{}".format(i): UserSettableParameter(
-        "slider", "Ant Size of Species {}".format(i), value=1, min_value=1, max_value=3, step=0.1)})
+        "slider", "Ant Size of Species {}".format(i), value=1, min_value=1, max_value=3, step=0.2)})
 
 colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
            for i in range(MAX_N_SPECIES)]

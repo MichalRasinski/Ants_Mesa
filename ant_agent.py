@@ -25,13 +25,13 @@ class Ant(Agent):
         self.cargo = 0
         self.last_pos = pos
         self.energy = 100
-        self.orientation = None
+        self.orient = None
         self.forage = False
         self.lost = False
         self.pheromone_strength = 0
 
     def update_orientation(self):
-        self.orientation = (self.pos[0] - self.last_pos[0], self.pos[1] - self.last_pos[1])
+        self.orient = (self.pos[0] - self.last_pos[0], self.pos[1] - self.last_pos[1])
 
     def neighborhood(self, number):
         if number == 8:
@@ -77,11 +77,13 @@ class Ant(Agent):
         self.move(new_pos)
 
     def go_random(self):
-        moves = self.find_straight_path_points("wide")
+        moves = self.find_straight_path_points("narrow")
         moves = list(set(moves) & self.model.grid.empties)
         if moves:
             weights = self.weigh_straight_path_points(moves, w=4)
             self.move(random.choices(moves, weights)[0])
+        else:
+            self.turn_around()
 
     def go_down_the_trail(self, pheromone):
         destiny_cell = None
@@ -121,19 +123,19 @@ class Ant(Agent):
     def find_straight_path_points(self, w_or_n):
         first_neighborhood = set(self.neighborhood(8))
 
-        if w_or_n == "wide":  # 3 cells in front
+        if w_or_n == "wide":  # 3 cells in front + 2 cells at sides
             second_neighborhood = set(self.model.grid.get_neighborhood(self.last_pos, moore=False, include_center=True))
             possible_moves = list(first_neighborhood - second_neighborhood)
 
-        elif w_or_n == "narrow":  # 3 cells in front + 2 cells at sides
-            next_point = self.pos[0] + self.orientation[0], self.pos[1] + self.orientation[1]
+        elif w_or_n == "narrow":  # 3 cells in front
+            next_point = self.pos[0] + self.orient[0], self.pos[1] + self.orient[1]
             second_neighborhood = set(self.model.grid.get_neighborhood(next_point, moore=False, include_center=True))
             possible_moves = list(first_neighborhood & second_neighborhood)
 
         return possible_moves
 
     def weigh_straight_path_points(self, moves, w=6):
-        next_point = self.pos[0] + self.orientation[0], self.pos[1] + self.orientation[1]
+        next_point = self.pos[0] + self.orient[0], self.pos[1] + self.orient[1]
         move_weights = [w if pos == next_point else 1 for pos in moves]
         return move_weights
 
@@ -150,7 +152,7 @@ class Ant(Agent):
         return smells
 
     def turn_around(self):
-        self.last_pos = self.pos[0] + self.orientation[0], self.pos[1] + self.orientation[1]
+        self.last_pos = self.pos[0] + self.orient[0], self.pos[1] + self.orient[1]
         self.update_orientation()
 
     # take food from the food_site
@@ -191,7 +193,7 @@ class Ant(Agent):
         if self.health <= 0 or not self.energy:
             self.die()
             return
-        elif self in self.anthill.ants_inside:
+        elif self in self.anthill.ants_inside or self in self.anthill.queens_inside:
             if self.energy < 80:
                 self.eat()
             return
@@ -202,8 +204,19 @@ class Ant(Agent):
         objects = self.sense_neighborhood()
         if objects["enemies"]:
             self.attack(objects["enemies"][0])
+
+        # QUEENS ONLY
+        elif isinstance(self, Queen):
+            if objects["food"]:
+                succeeded = self.start_new_colony()
+                if succeeded:
+                    self.die()
+                    return
+            self.go_random()
+
         elif objects["food"] and not self.cargo:
             self.take_food(objects["food"][0])
+
         elif self.cargo:
             if self.pos in self.anthill.surrounding_cells:
                 self.enter_anthill()
@@ -226,3 +239,22 @@ class Ant(Agent):
                     self.go_random()
         else:
             self.go_down_the_trail("food trail")
+
+
+class Queen(Ant):
+    def __init__(self, unique_id, model, species, pos, anthill):
+        super().__init__(unique_id, model, species, pos, anthill)
+        self.energy = 200
+
+    def start_new_colony(self):
+        objects = self.sense_neighborhood()
+        food_sites = list(objects["food"])
+        for f_s in food_sites:
+            if f_s.food_units > 50:
+                anthill = ants_model.Anthill(self.model.next_id(), self.model, self.species, f_s.pos, f_s.food_units)
+                self.model.grid.remove_agent(f_s)
+                self.model.schedule.remove(f_s)
+                self.model.schedule.add(anthill)
+                self.model.grid.place_agent(anthill, anthill.pos)
+                return True
+        return False

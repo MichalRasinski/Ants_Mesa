@@ -15,11 +15,12 @@ MAX_N_SPECIES = 5
 def agent_portrayal(agent):
     if isinstance(agent, Ant):
         portrayal = {"Shape": "circle",
-                     "Filled": "false",
+                     "Filled": "true",
                      "Layer": 1,
                      "Color": colours[agent.species.id],
                      "r": agent.size * 0.5}
     if isinstance(agent, Queen):
+        portrayal["Filled"] = "false"
         portrayal["r"] = agent.size
         # "text": agent.unique_id,
         # "text_color": colours[agent.species.id]}
@@ -62,7 +63,9 @@ model_params = {
     "N_food_sites": UserSettableParameter("number", "Initial Number of Spots with Food", 50, 0, MAX_N_OBJECTS),
     "N_obstacles": UserSettableParameter("number", "Number of Obstacles", 50, 0, MAX_N_OBJECTS),
     "width": width,
-    "height": height
+    "height": height,
+    "food_spawn": UserSettableParameter("slider", "Food Site spawns every x turns", value=5, min_value=1, max_value=10),
+    "species_text": UserSettableParameter('static_text', value="Below parameters controlling ant species")
 }
 for i in range(MAX_N_SPECIES):
     model_params.update(

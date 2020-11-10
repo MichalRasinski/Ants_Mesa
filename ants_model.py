@@ -121,8 +121,9 @@ class Anthill(Agent):
 
 
 class AntsWorld(Model):
-    def __init__(self, N_food_sites, N_obstacles, width, height, **kwargs):
+    def __init__(self, N_food_sites, N_obstacles, width, height, food_spawn, **kwargs):
         super().__init__()
+        self.food_spawn = food_spawn
         self.N_obstacles = N_obstacles
         self.N_food_sites = N_food_sites
         self.grid = SingleGrid(width, height, False)
@@ -149,24 +150,33 @@ class AntsWorld(Model):
 
         # Create agents
         for species in species_list:
-            x, y = random.choice(list(self.grid.empties))
-            ah = Anthill(self.next_id(), self, species, (x, y))
-            self.schedule.add(ah)
-            self.grid.place_agent(ah, (x, y))
+            pos = random.choice(list(self.grid.empties))
+            ah = Anthill(self.next_id(), self, species, pos)
+            self.spawn_object(ah, pos)
         for _ in range(self.N_food_sites):
-            x, y = random.choice(list(self.grid.empties))
-            fs = FoodSite(self.next_id(), self, random.randrange(100), (x, y), 0)
-            self.schedule.add(fs)
-            self.grid.place_agent(fs, (x, y))
+            pos = random.choice(list(self.grid.empties))
+            fs = FoodSite(self.next_id(), self, random.randrange(100), pos, 0)
+            self.spawn_object(fs, pos)
         for _ in range(self.N_obstacles):
-            x, y = random.choice(list(self.grid.empties))
+            pos = random.choice(list(self.grid.empties))
             obs = Obstacle(self.next_id(), self)
-            self.grid.place_agent(obs, (x, y))
+            self.spawn_object(obs, pos)
 
-    def step(self):
-        self.data_collector.collect(self)
-        self.schedule.step()
+    def spawn_object(self, object, coordinates):
+        self.schedule.add(object)
+        self.grid.place_agent(object, coordinates)
+
+    def evaporate_pheromone(self):
         for x in range(self.grid.width):
             for y in range(self.grid.height):
                 for k in self.pheromone_map[x][y].keys():
                     self.pheromone_map[x][y][k] = max(0, self.pheromone_map[x][y][k] - 1)
+
+    def step(self):
+        self.data_collector.collect(self)
+        self.schedule.step()
+        self.evaporate_pheromone()
+        if self.schedule.steps % self.food_spawn == 0:
+            pos = random.choice(list(self.grid.empties))
+            fs = FoodSite(self.next_id(), self, random.randrange(100), pos, 0)
+            self.spawn_object(fs, pos)

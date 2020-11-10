@@ -190,6 +190,7 @@ class Ant(Agent):
         # food_trails = [[self.model.pheromone_map[x][y]["food trail"] for x in range(height)] for y in
         #                range(height - 1, -1, -1)]
         # food_trails = np.array(food_trails)
+        self.energy -= 1
         if self.health <= 0 or not self.energy:
             self.die()
             return
@@ -198,7 +199,6 @@ class Ant(Agent):
                 self.eat()
             return
 
-        self.energy -= 1
         self.leave_pheromone(self, SELF_PHEROMONE_RATIO)
 
         objects = self.sense_neighborhood()

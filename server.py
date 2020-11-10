@@ -7,11 +7,9 @@ from mesa.visualization.UserParam import UserSettableParameter
 
 import random
 
-# TODO text of food inside colony
-
-MAX_N_SPECIES = 5
 width = height = 50
 MAX_N_OBJECTS = width * height / 3
+MAX_N_SPECIES = 5
 
 
 def agent_portrayal(agent):
@@ -38,7 +36,10 @@ def agent_portrayal(agent):
                      "Filled": "true",
                      "Layer": 1,
                      "Color": colours[agent.species.id],
-                     "r": agent.species.ant_size}
+                     "r": agent.species.ant_size,
+                     "text": "{0:.0f}".format(agent.food_units),
+                     "text_color": "black"}
+
     elif type(agent) is FoodSite:
         portrayal = {"Shape": "rect",
                      "w": 1,
@@ -65,12 +66,12 @@ model_params = {
 }
 for i in range(MAX_N_SPECIES):
     model_params.update(
-        {"include_{}".format(i): UserSettableParameter("checkbox", "Include species {}".format(i),
-                                                       False if i > 1 else True)})
+        {"include_{}".format(i): UserSettableParameter(
+            "checkbox", "Include Species {}".format(i), True if i <= 1 else False)})
     model_params.update({"reproduction_rate_{}".format(i): UserSettableParameter(
-        "slider", "Reproduction Rate of Species {}".format(i), value=1, min_value=1, max_value=3, step=0.2)})
+        "slider", "Reproduction Rate of the Species {}".format(i), value=3, min_value=1, max_value=5)})
     model_params.update({"ant_size_{}".format(i): UserSettableParameter(
-        "slider", "Ant Size of Species {}".format(i), value=1, min_value=1, max_value=3, step=0.2)})
+        "slider", "Ant Size of the Species {}".format(i), value=3, min_value=1, max_value=5)})
 
 colours = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
            for i in range(MAX_N_SPECIES)]

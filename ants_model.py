@@ -10,10 +10,8 @@ ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
-SELF_PHEROMONE_RATIO = 50
 
 
-# ToDO QUEENS
 # killed ant produces pheromone calling for help
 # killed ant is a source of food
 # starving ant may ask for food another ant
@@ -30,9 +28,9 @@ def count_ants(model, species_id):
 
 
 class Species:
-    def __init__(self, ant_size, base_reproduction_rate, id):
+    def __init__(self, ant_size, reproduction_rate, id):
         self.id = id
-        self.base_reproduction_rate = base_reproduction_rate
+        self.reproduction_rate = reproduction_rate
         self.ant_size = ant_size
         self.food_energy = 100 / self.ant_size
 
@@ -68,8 +66,8 @@ class Anthill(Agent):
         self.pos = pos
         self.ants_inside = []
         self.queens_inside = []
-        self.turn_counter = 0
         self.surrounding_cells = self.model.grid.get_neighborhood(self.pos, moore=True)
+        self.birth_food = self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
 
     def release_ant(self):
         if self.queens_inside:
@@ -79,8 +77,7 @@ class Anthill(Agent):
         pheromone_cells = ant.smell_cells_for("food trail", self.surrounding_cells)
         possible_locations = list(set(self.surrounding_cells) & self.model.grid.empties)
         weights = [1 for pl in possible_locations]
-        ant.forage = False
-        if self.turn_counter % 30 < 2:
+        if self.model.schedule.steps % 30 < 2:
             ant.forage = True
 
         if set(pheromone_cells) & self.model.grid.empties:
@@ -90,20 +87,28 @@ class Anthill(Agent):
         ant.orient = (ant.pos[0] - self.pos[0], ant.pos[1] - self.pos[1])
         self.model.grid.place_agent(ant, ant.pos)
 
-    def step(self):
-        self.turn_counter += 1
-        free_surrounding_cells = set(self.surrounding_cells) & self.model.grid.empties
-        if self.turn_counter % self.species.base_reproduction_rate == 0:
-            if self.food_units > FOOD_SIZE_BIRTH_RATIO * self.species.ant_size:
-                self.food_units -= self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
-                if self.turn_counter % 100 > 90:
-                    ant = ant_agent.Queen(self.model.next_id(), self.model, self.species, self.pos, self)
-                    self.queens_inside.append(ant)
-                else:
-                    ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.pos, self)
-                    self.ants_inside.append(ant)
-                self.model.schedule.add(ant)
+    def make_ant(self, w_or_q):
+        if w_or_q == "worker":
+            self.food_units -= self.birth_food
+            ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.pos, self)
+            self.ants_inside.append(ant)
+        if w_or_q == "queen":
+            self.food_units -= self.birth_food * 2
+            ant = ant_agent.Queen(self.model.next_id(), self.model, self.species, self.pos, self)
+            self.queens_inside.append(ant)
+        self.model.schedule.add(ant)
 
+    def step(self):
+        if self.food_units > self.birth_food * 2:
+            birth_prob = 0.05 * min(10, self.food_units // self.birth_food) + \
+                         0.2 + 0.075 * (self.species.reproduction_rate - 1)
+            if random.random() <= birth_prob:
+                if self.model.schedule.steps % 100 > 90:
+                    self.make_ant("queen")
+                else:
+                    self.make_ant("worker")
+
+        free_surrounding_cells = set(self.surrounding_cells) & self.model.grid.empties
         if (self.ants_inside or self.queens_inside) and free_surrounding_cells:
             if self.ants_inside:
                 ant = self.ants_inside[0]
@@ -111,7 +116,7 @@ class Anthill(Agent):
                 ant = self.queens_inside[0]
             if list(ant.smell_cells_for("food trail", self.surrounding_cells)):
                 self.release_ant()
-            elif self.turn_counter % 30 < 2:
+            elif self.model.schedule.steps % 30 < 2:
                 self.release_ant()
 
 
@@ -165,10 +170,3 @@ class AntsWorld(Model):
             for y in range(self.grid.height):
                 for k in self.pheromone_map[x][y].keys():
                     self.pheromone_map[x][y][k] = max(0, self.pheromone_map[x][y][k] - 1)
-
-    # def get_colonies(self):
-    #     colonies = filter(lambda x: isinstance(x, Colony), self.schedule.agents)
-    #     colonies_by_species = defaultdict(list)
-    #     for colony in colonies:
-    #         colonies_by_species[colony.species.id].append(colony)
-    #     return colonies_by_species

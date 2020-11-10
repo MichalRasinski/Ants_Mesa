@@ -69,20 +69,19 @@ class Anthill(Agent):
         self.surrounding_cells = self.model.grid.get_neighborhood(self.pos, moore=True)
         self.birth_food = self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
 
-    def release_ant(self):
+    def release_ant(self, pheromone_cells=[], forage=False):
         if self.queens_inside:
             ant = self.queens_inside.pop()
         else:
             ant = self.ants_inside.pop(0)
-        pheromone_cells = ant.smell_cells_for("food trail", self.surrounding_cells)
-        possible_locations = list(set(self.surrounding_cells) & self.model.grid.empties)
-        weights = [1 for pl in possible_locations]
-        if self.model.schedule.steps % 30 < 2:
-            ant.forage = True
+            ant.forage = forage
 
-        if set(pheromone_cells) & self.model.grid.empties:
+        possible_locations = list(set(self.surrounding_cells) & self.model.grid.empties)
+        weights = [1] * len(possible_locations)
+        if set(pheromone_cells) & self.model.grid.empties and not forage:
             possible_locations = list(set(pheromone_cells) & self.model.grid.empties)
             weights = [pheromone_cells[pl] for pl in possible_locations]
+
         ant.pos = random.choices(possible_locations, weights)[0]
         ant.orient = (ant.pos[0] - self.pos[0], ant.pos[1] - self.pos[1])
         self.model.grid.place_agent(ant, ant.pos)
@@ -114,10 +113,12 @@ class Anthill(Agent):
                 ant = self.ants_inside[0]
             else:
                 ant = self.queens_inside[0]
-            if list(ant.smell_cells_for("food trail", self.surrounding_cells)):
-                self.release_ant()
+
+            pheromone_cells = list(ant.smell_cells_for("food trail", self.surrounding_cells))
+            if pheromone_cells:
+                self.release_ant(pheromone_cells=pheromone_cells)
             elif self.model.schedule.steps % 30 < 2:
-                self.release_ant()
+                self.release_ant(forage=True)
 
 
 class AntsWorld(Model):

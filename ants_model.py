@@ -69,7 +69,7 @@ class Anthill(Agent):
         self.surrounding_cells = self.model.grid.get_neighborhood(self.pos, moore=True)
         self.birth_food = self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
 
-    def release_ant(self, pheromone_cells=[], forage=False):
+    def release_ant(self, pheromone_cells={}, forage=False):
         if self.queens_inside:
             ant = self.queens_inside.pop()
         else:
@@ -114,8 +114,8 @@ class Anthill(Agent):
             else:
                 ant = self.queens_inside[0]
 
-            pheromone_cells = list(ant.smell_cells_for("food trail", self.surrounding_cells))
-            if pheromone_cells:
+            pheromone_cells = ant.smell_cells_for("food trail", self.surrounding_cells)
+            if list(pheromone_cells):
                 self.release_ant(pheromone_cells=pheromone_cells)
             elif self.model.schedule.steps % 30 < 2:
                 self.release_ant(forage=True)

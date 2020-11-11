@@ -1,7 +1,7 @@
 import ant_agent
 from mesa import Agent, Model
 from mesa.space import *
-from mesa.time import RandomActivation
+from mesa.time import BaseScheduler, RandomActivation
 from mesa.datacollection import DataCollector
 from collections import defaultdict
 import random
@@ -12,6 +12,8 @@ SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 
 
+# TODO destroying anthills
+# TODO lessen the birth prob or make more minimal food
 # killed ant produces pheromone calling for help
 # killed ant is a source of food
 # starving ant may ask for food another ant
@@ -23,8 +25,9 @@ def sign(x):
 
 
 def count_ants(model, species_id):
-    ants = filter(lambda x: isinstance(x, ant_agent.Ant) and x.species.id == species_id, model.schedule.agents)
-    return len(list(ants))
+    species = list(filter(lambda x: x.id == species_id, model.species_list))[0]
+    ants = [ah.worker_counter for ah in species.anthills]
+    return sum(ants)
 
 
 class Species:
@@ -32,20 +35,22 @@ class Species:
         self.id = id
         self.reproduction_rate = reproduction_rate
         self.ant_size = ant_size
-        self.food_energy = 100 / self.ant_size
+        self.energy_food = 100 / self.ant_size
+        self.anthills = []
 
 
 class Obstacle(Agent):
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model, pos):
         super().__init__(unique_id, model)
+        self.pos = pos
 
 
 class FoodSite(Agent):
-    def __init__(self, unique_id, model, initial_food_units, coordinates, regeneration_rate=0):
+    def __init__(self, unique_id, model, initial_food_units, coordinates, r_rate=0):
         super().__init__(unique_id, model)
         self.initial_food_units = initial_food_units
         self.food_units = initial_food_units
-        self.rate = regeneration_rate
+        self.rate = r_rate
         self.pos = coordinates
 
     def step(self):
@@ -64,10 +69,12 @@ class Anthill(Agent):
         self.species = species
         self.food_units = food_units
         self.pos = pos
+        self.worker_counter = 0
         self.ants_inside = []
         self.queens_inside = []
         self.surrounding_cells = self.model.grid.get_neighborhood(self.pos, moore=True)
         self.birth_food = self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
+        species.anthills.append(self)
 
     def release_ant(self, pheromone_cells={}, forage=False):
         if self.queens_inside:
@@ -90,6 +97,7 @@ class Anthill(Agent):
         if w_or_q == "worker":
             self.food_units -= self.birth_food
             ant = ant_agent.Ant(self.model.next_id(), self.model, self.species, self.pos, self)
+            self.worker_counter += 1
             self.ants_inside.append(ant)
         if w_or_q == "queen":
             self.food_units -= self.birth_food * 2
@@ -97,7 +105,15 @@ class Anthill(Agent):
             self.queens_inside.append(ant)
         self.model.schedule.add(ant)
 
+    def destroy(self):
+        self.species.anthills.remove(self)
+        self.model.schedule.remove(self)
+        self.model.grid.remove_agent(self)
+
     def step(self):
+        if self.food_units < self.birth_food * 2 and self.worker_counter == 0:
+            self.destroy()
+
         if self.food_units > self.birth_food * 2:
             birth_prob = 0.05 * min(10, self.food_units // self.birth_food) + \
                          0.2 + 0.075 * (self.species.reproduction_rate - 1)
@@ -128,44 +144,42 @@ class AntsWorld(Model):
         self.N_obstacles = N_obstacles
         self.N_food_sites = N_food_sites
         self.grid = SingleGrid(width, height, False)
-        self.schedule = RandomActivation(self)
+        self.schedule = BaseScheduler(self)
         self.pheromone_map = Grid(width, height, False)
+        self.species_list = []
+
         for x in range(width):
             for y in range(height):
                 self.pheromone_map[x][y] = defaultdict(lambda: 0)
-        species_list = []
         for x in range(len(list(kwargs)) // 3):
             if kwargs["include_{}".format(x)]:
-                species_list.append(
+                self.species_list.append(
                     Species(
                         kwargs["ant_size_{}".format(x)],
                         kwargs["reproduction_rate_{}".format(x)],
-                        len(species_list)
+                        len(self.species_list)
                     )
                 )
 
         self.data_collector = DataCollector(
             model_reporters={"Species {}".format(s_id): (lambda id: (lambda m: count_ants(m, id)))(s_id) for s_id in
-                             range(len(species_list))}
+                             range(len(self.species_list))}
         )
 
         # Create agents
-        for species in species_list:
+        for species in self.species_list:
             pos = random.choice(list(self.grid.empties))
-            ah = Anthill(self.next_id(), self, species, pos)
-            self.spawn_object(ah, pos)
+            self.spawn_object(Anthill(self.next_id(), self, species, pos))
         for _ in range(self.N_food_sites):
             pos = random.choice(list(self.grid.empties))
-            fs = FoodSite(self.next_id(), self, random.randrange(100), pos, 0)
-            self.spawn_object(fs, pos)
+            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(100), pos, 0))
         for _ in range(self.N_obstacles):
             pos = random.choice(list(self.grid.empties))
-            obs = Obstacle(self.next_id(), self)
-            self.spawn_object(obs, pos)
+            self.spawn_object(Obstacle(self.next_id(), self, pos))
 
-    def spawn_object(self, object, coordinates):
+    def spawn_object(self, object):
         self.schedule.add(object)
-        self.grid.place_agent(object, coordinates)
+        self.grid.place_agent(object, object.pos)
 
     def evaporate_pheromone(self):
         for x in range(self.grid.width):
@@ -179,5 +193,4 @@ class AntsWorld(Model):
         self.evaporate_pheromone()
         if self.schedule.steps % self.food_spawn == 0:
             pos = random.choice(list(self.grid.empties))
-            fs = FoodSite(self.next_id(), self, random.randrange(100), pos, 0)
-            self.spawn_object(fs, pos)
+            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(100), pos, r_rate=0))

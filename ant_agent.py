@@ -173,13 +173,14 @@ class Ant(Agent):
 
     def eat(self):
         e_diff = 100 - self.energy
-        to_eat = min(e_diff / self.species.food_energy, self.anthill.food_units)
-        self.energy += to_eat * self.species.food_energy
+        to_eat = min(e_diff / self.species.energy_food, self.anthill.food_units)
+        self.energy += to_eat * self.species.energy_food
         self.anthill.food_units -= to_eat
 
     # just die
     def die(self):
         self.model.schedule.remove(self)
+        self.anthill.worker_counter -= 1
         if self in self.anthill.ants_inside:
             self.anthill.ants_inside.remove(self)
         else:

@@ -8,7 +8,7 @@ import random
 import time
 
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
-
+FOOD_PER_FOOD_SITE = 300
 
 # TODO colony decides whether to release ants based on food supplies
 # TODO more fierce ants
@@ -60,7 +60,7 @@ class FoodSite(Agent):
 
 
 class Anthill(Agent):
-    def __init__(self, unique_id, model, species, pos, food_units=50):
+    def __init__(self, unique_id, model, species, pos, food_units=100):
         super().__init__(unique_id, model)
         self.species = species
         self.food_units = food_units
@@ -112,7 +112,8 @@ class Anthill(Agent):
             return
 
         if self.food_units > self.birth_food * 2 + self.worker_counter:
-            birth_prob = 0.03 * (self.food_units // self.birth_food) + 0.1 * self.species.reproduction_rate
+            birth_prob = 0.01 * ((self.food_units-self.worker_counter) // self.birth_food) + \
+                         0.1 * self.species.reproduction_rate
             if random.random() <= birth_prob:
                 queen_season = 60 + 20 * self.species.ant_size
                 duration = 10
@@ -155,13 +156,13 @@ class AntsWorld(Model):
                     Species(
                         kwargs["ant_size_{}".format(x)],
                         kwargs["reproduction_rate_{}".format(x)],
-                        len(self.species_list)
+                        x
                     )
                 )
-
+        species_id = [s.id for s in self.species_list]
         self.data_collector = DataCollector(
-            model_reporters={"Species {}".format(s_id): (lambda id: (lambda m: count_ants(m, id)))(s_id) for s_id in
-                             range(len(self.species_list))}
+            model_reporters={"Species {}".format(s_id): (lambda id: (lambda model: count_ants(model, id)))(s_id)
+                             for s_id in species_id}
         )
 
         # Create agents
@@ -170,7 +171,7 @@ class AntsWorld(Model):
             self.spawn_object(Anthill(self.next_id(), self, species, pos))
         for _ in range(self.N_food_sites):
             pos = random.choice(list(self.grid.empties))
-            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(400), pos, 0))
+            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(FOOD_PER_FOOD_SITE), pos, 0))
         for _ in range(self.N_obstacles):
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(Obstacle(self.next_id(), self, pos))
@@ -186,7 +187,7 @@ class AntsWorld(Model):
                 for k in list(self.pheromone_map[x][y].keys()):
                     self.pheromone_map[x][y][k] -= 1
                     if self.pheromone_map[x][y][k] == 0:
-                        self.pheromone_map[x][y].pop(k)
+                        del self.pheromone_map[x][y][k]
 
     def step(self):
         start = time.time()
@@ -200,4 +201,4 @@ class AntsWorld(Model):
         print("Evaporate Pheromone:", time.time() - start)
         if self.schedule.steps % self.food_spawn == 0:
             pos = random.choice(list(self.grid.empties))
-            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(100), pos, r_rate=0))
+            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(FOOD_PER_FOOD_SITE), pos, r_rate=0))

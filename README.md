@@ -4,6 +4,7 @@ So far:
 
 Ants:
 - die if health or energy is zero
+- if they are inside the colony and energy is below 80 then they eat (energy=100)
 - normally they stay at the colony unless there is 'food trail' pheromone nearby. Then they follow that pheromone trail.
 - if they loose the trail, they try to go back to the anthill based on 'self' pheromone
 - once in a while a foraging party goes out looking for food. Each ant goes more or less straight not following any trail.
@@ -14,10 +15,10 @@ Ants:
 
 Queens:
 - goes more or less in one direction
-- if they find an abundant food site then they start a new colony on that  
+- if they find an abundant food site then they start a new colony on the top of that  
 
 Anthills:
-- spawn ants: the probability of an ant getting born is expressed by the formula: 
+- spawn ants if there is enough food: the probability of an ant getting born is expressed by the formula: 
   
     birth_prob = 0.05 * min(10, food_units // birth_food) + 0.2 + 0.075 * (reproduction_rate - 1),
     

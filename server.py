@@ -38,7 +38,7 @@ def agent_portrayal(agent):
                      "Layer": 1,
                      "Color": colours[agent.species.id],
                      "r": agent.species.ant_size,
-                     "text": "{0:.0f}".format(agent.food_units),
+                     "text": "{0:.0f}/{1:.0f}".format(agent.food_units, agent.worker_counter),
                      "text_color": "black"}
 
     elif type(agent) is FoodSite:

@@ -5,18 +5,14 @@ from mesa.time import BaseScheduler, RandomActivation
 from mesa.datacollection import DataCollector
 from collections import defaultdict
 import random
+import time
 
-ANT_SIZE_CARGO_RATIO = 5  # cargo = X * ant_size
-SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
-SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 
 
-# TODO destroying anthills
-# TODO lessen the birth prob or make more minimal food
-# killed ant produces pheromone calling for help
-# killed ant is a source of food
-# starving ant may ask for food another ant
+# TODO colony decides whether to release ants based on food supplies
+# TODO more fierce ants
+# TODO lower the birth rate
 
 def sign(x):
     if x == 0:
@@ -131,7 +127,7 @@ class Anthill(Agent):
                 ant = self.queens_inside[0]
 
             pheromone_cells = ant.smell_cells_for("food trail", self.surrounding_cells)
-            if list(pheromone_cells):
+            if list(pheromone_cells) and self.model.schedule.steps % 2 == 0:
                 self.release_ant(pheromone_cells=pheromone_cells)
             elif self.model.schedule.steps % 30 < 2:
                 self.release_ant(forage=True)
@@ -144,7 +140,7 @@ class AntsWorld(Model):
         self.N_obstacles = N_obstacles
         self.N_food_sites = N_food_sites
         self.grid = SingleGrid(width, height, False)
-        self.schedule = BaseScheduler(self)
+        self.schedule = RandomActivation(self)
         self.pheromone_map = Grid(width, height, False)
         self.species_list = []
 
@@ -181,6 +177,7 @@ class AntsWorld(Model):
         self.schedule.add(object)
         self.grid.place_agent(object, object.pos)
 
+    # TIME-CONSUMING - HALF OF THE FRAME TIME
     def evaporate_pheromone(self):
         for x in range(self.grid.width):
             for y in range(self.grid.height):
@@ -188,9 +185,15 @@ class AntsWorld(Model):
                     self.pheromone_map[x][y][k] = max(0, self.pheromone_map[x][y][k] - 1)
 
     def step(self):
+        start = time.time()
         self.data_collector.collect(self)
+        print("Data Collector:", time.time() - start)
+        start = time.time()
         self.schedule.step()
+        print("Schedule step:", time.time() - start)
+        start = time.time()
         self.evaporate_pheromone()
+        print("Evaporate Pheromone:", time.time() - start)
         if self.schedule.steps % self.food_spawn == 0:
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(FoodSite(self.next_id(), self, random.randrange(100), pos, r_rate=0))

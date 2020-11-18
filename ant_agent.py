@@ -68,7 +68,6 @@ class Ant(Agent):
             if not empty_cells:
                 self.turn_around()
                 return
-
         weights = self.weigh_straight_path_points(empty_cells)
         new_pos = random.choices(list(empty_cells), weights, k=1)[0]
         self.move(new_pos)
@@ -138,14 +137,14 @@ class Ant(Agent):
 
     def leave_pheromone(self, smell, strength):
         x, y = self.pos
-        self.model.pheromone_map[x][y][smell] = min(self.model.pheromone_map[x][y][smell] + strength * self.size,
+        self.model.pheromone_map[smell][x][y] = min(self.model.pheromone_map[smell][x][y] + strength * self.size,
                                                     MAX_PHEROMONE_STRENGTH)
 
     def smell_cells_for(self, smell, cells):
         smells = {}
         for x, y in cells:
-            if self.model.pheromone_map[x][y][smell] > 0:
-                smells[(x, y)] = self.model.pheromone_map[x][y][smell]
+            if self.model.pheromone_map[smell][x][y] > 0:
+                smells[(x, y)] = self.model.pheromone_map[smell][x][y]
         return smells
 
     def turn_around(self):
@@ -182,6 +181,8 @@ class Ant(Agent):
             self.anthill.ants_inside.remove(self)
         else:
             self.model.grid.remove_agent(self)
+        if self in self.model.pheromone_map:
+            del self.model.pheromone_map[self]
 
     #  whole ant steering is performed here
     def step(self):

@@ -6,9 +6,11 @@ from mesa.datacollection import DataCollector
 from collections import defaultdict
 import random
 import time
+import numpy as np
 
 FOOD_SIZE_BIRTH_RATIO = 2  # X * ant_size = food to produce a new ant
 FOOD_PER_FOOD_SITE = 300
+
 
 # TODO colony decides whether to release ants based on food supplies
 # TODO more fierce ants
@@ -52,8 +54,8 @@ class FoodSite(Agent):
     def step(self):
         self.food_units = min(self.food_units + self.rate, self.initial_food_units)
         self.food_units += self.rate
-        for x, y in self.model.pheromone_map.iter_neighborhood(self.pos, moore=True):
-            self.model.pheromone_map[x][y]["food"] = 2
+        for x, y in self.model.grid.iter_neighborhood(self.pos, moore=True):
+            self.model.pheromone_map["food"][x][y] = 2
         if not self.food_units:
             self.model.schedule.remove(self)
             self.model.grid.remove_agent(self)
@@ -70,6 +72,7 @@ class Anthill(Agent):
         self.queens_inside = []
         self.surrounding_cells = self.model.grid.get_neighborhood(self.pos, moore=True)
         self.birth_food = self.species.ant_size * FOOD_SIZE_BIRTH_RATIO
+        self.turn = 0
         species.anthills.append(self)
 
     def release_ant(self, pheromone_cells={}, forage=False):
@@ -107,20 +110,21 @@ class Anthill(Agent):
         self.model.grid.remove_agent(self)
 
     def step(self):
+        self.turn += 1
         if self.food_units < self.birth_food * 2 and self.worker_counter == 0:
             self.destroy()
             return
 
-        if self.food_units > self.birth_food * 2 + self.worker_counter:
-            birth_prob = 0.01 * ((self.food_units-self.worker_counter) // self.birth_food) + \
-                         0.1 * self.species.reproduction_rate
-            if random.random() <= birth_prob:
-                queen_season = 60 + 20 * self.species.ant_size
-                duration = 10
-                if self.model.schedule.steps % queen_season < duration < self.model.schedule.steps:
-                    self.make_ant("queen")
-                else:
-                    self.make_ant("worker")
+        minimum_food = self.birth_food * 2 + self.worker_counter
+        if self.food_units > minimum_food:
+            queen_season = 60 + 20 * self.species.reproduction_rate
+            duration = 5
+            if self.turn % queen_season < duration and self.turn > queen_season:
+                self.make_ant("queen")
+
+            birth_prob = 0.02 * ((self.food_units - minimum_food) // self.birth_food) * self.species.reproduction_rate
+            if random.random() < birth_prob:
+                self.make_ant("worker")
 
         free_surrounding_cells = set(self.surrounding_cells) & self.model.grid.empties
         if (self.ants_inside or self.queens_inside) and free_surrounding_cells:
@@ -132,7 +136,7 @@ class Anthill(Agent):
             pheromone_cells = ant.smell_cells_for("food trail", self.surrounding_cells)
             if list(pheromone_cells) and self.model.schedule.steps % 2 == 0:
                 self.release_ant(pheromone_cells=pheromone_cells)
-            elif self.model.schedule.steps % 30 < 2:
+            elif self.turn % 30 < 4:
                 self.release_ant(forage=True)
 
 
@@ -144,12 +148,9 @@ class AntsWorld(Model):
         self.N_food_sites = N_food_sites
         self.grid = SingleGrid(width, height, False)
         self.schedule = RandomActivation(self)
-        self.pheromone_map = Grid(width, height, False)
+        self.pheromone_map = defaultdict(lambda: np.zeros((height, width)))
         self.species_list = []
 
-        for x in range(width):
-            for y in range(height):
-                self.pheromone_map[x][y] = defaultdict(lambda: 0)
         for x in range(len(list(kwargs)) // 3):
             if kwargs["include_{}".format(x)]:
                 self.species_list.append(
@@ -180,19 +181,12 @@ class AntsWorld(Model):
         self.schedule.add(object)
         self.grid.place_agent(object, object.pos)
 
-    # TIME-CONSUMING - HALF OF THE FRAME TIME
     def evaporate_pheromone(self):
-        for x in range(self.grid.width):
-            for y in range(self.grid.height):
-                for k in list(self.pheromone_map[x][y].keys()):
-                    self.pheromone_map[x][y][k] -= 1
-                    if self.pheromone_map[x][y][k] == 0:
-                        del self.pheromone_map[x][y][k]
+        for k in self.pheromone_map.keys():
+            self.pheromone_map[k][self.pheromone_map[k] > 0] -= 1
 
     def step(self):
-        start = time.time()
         self.data_collector.collect(self)
-        print("Data Collector:", time.time() - start)
         start = time.time()
         self.schedule.step()
         print("Schedule step:", time.time() - start)

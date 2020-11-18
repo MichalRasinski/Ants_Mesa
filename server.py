@@ -60,7 +60,8 @@ def agent_portrayal(agent):
 
 
 model_params = {
-    "N_food_sites": UserSettableParameter("number", "Initial Number of Spots with Food", 20, 0, MAX_N_OBJECTS),
+    "N_food_sites": UserSettableParameter("slider", "Initial Number of Spots with Food",
+                                          value=10, min_value=0, max_value=100, step=10),
     "N_obstacles": UserSettableParameter("number", "Number of Obstacles", 50, 0, MAX_N_OBJECTS),
     "width": width,
     "height": height,

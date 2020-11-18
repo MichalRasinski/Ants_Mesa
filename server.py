@@ -38,7 +38,7 @@ def agent_portrayal(agent):
                      "Layer": 1,
                      "Color": colours[agent.species.id],
                      "r": agent.species.ant_size,
-                     "text": "{0:.0f}/{1:.0f}".format(agent.food_units, agent.worker_counter),
+                     "text": "f:{0:.0f}/a:{1:.0f}".format(agent.food_units, agent.worker_counter),
                      "text_color": "black"}
 
     elif type(agent) is FoodSite:
@@ -60,11 +60,12 @@ def agent_portrayal(agent):
 
 
 model_params = {
-    "N_food_sites": UserSettableParameter("number", "Initial Number of Spots with Food", 50, 0, MAX_N_OBJECTS),
+    "N_food_sites": UserSettableParameter("number", "Initial Number of Spots with Food", 20, 0, MAX_N_OBJECTS),
     "N_obstacles": UserSettableParameter("number", "Number of Obstacles", 50, 0, MAX_N_OBJECTS),
     "width": width,
     "height": height,
-    "food_spawn": UserSettableParameter("slider", "Food Site spawns every x turns", value=5, min_value=1, max_value=10),
+    "food_spawn": UserSettableParameter("slider", "Food Site spawns every x-th turn",
+                                        value=10, min_value=1, max_value=20),
     "species_text": UserSettableParameter('static_text', value="Below parameters controlling ant species")
 }
 for i in range(MAX_N_SPECIES):

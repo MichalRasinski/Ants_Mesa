@@ -36,7 +36,7 @@ class Ant(Agent):
         if number == 4:
             return self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
 
-    # Move to the given cell if it is empty if not do nothing. Returns whether move was done.
+    # Move to the given cell. Leave food trail pheromone if carry food
     def move(self, new_position):
         self.last_pos = self.pos
         self.model.grid.move_agent(self, new_position)
@@ -152,7 +152,7 @@ class Ant(Agent):
         self.last_pos = self.pos[0] + self.orient[0], self.pos[1] + self.orient[1]
         self.update_orientation()
 
-    # take food from the food_site
+    # take food from the food_site. Set the food trail pheromone strength based on richness of the food site.
     def take_food(self, food_site):
         self.cargo = min(self.size * ANT_SIZE_CARGO_RATIO, food_site.food_units)
         food_site.food_units -= self.cargo
@@ -183,6 +183,7 @@ class Ant(Agent):
         else:
             self.model.grid.remove_agent(self)
 
+    #  whole ant steering is performed here
     def step(self):
         self.energy -= 1
         if self.health <= 0 or self.energy <= 0:
@@ -230,6 +231,7 @@ class Queen(Ant):
         self.energy *= 2
         self.health *= 2
 
+    # start a new colony on a rich food site
     def start_new_colony(self):
         objects = self.sense_neighborhood()
         food_sites = list(objects["food"])

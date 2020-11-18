@@ -109,12 +109,14 @@ class Anthill(Agent):
     def step(self):
         if self.food_units < self.birth_food * 2 and self.worker_counter == 0:
             self.destroy()
+            return
 
-        if self.food_units > self.birth_food * 2:
-            birth_prob = 0.05 * min(10, self.food_units // self.birth_food) + \
-                         0.2 + 0.075 * (self.species.reproduction_rate - 1)
+        if self.food_units > self.birth_food * 2 + self.worker_counter:
+            birth_prob = 0.03 * (self.food_units // self.birth_food) + 0.1 * self.species.reproduction_rate
             if random.random() <= birth_prob:
-                if self.model.schedule.steps % 100 > 90:
+                queen_season = 60 + 20 * self.species.ant_size
+                duration = 10
+                if self.model.schedule.steps % queen_season < duration < self.model.schedule.steps:
                     self.make_ant("queen")
                 else:
                     self.make_ant("worker")
@@ -168,7 +170,7 @@ class AntsWorld(Model):
             self.spawn_object(Anthill(self.next_id(), self, species, pos))
         for _ in range(self.N_food_sites):
             pos = random.choice(list(self.grid.empties))
-            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(100), pos, 0))
+            self.spawn_object(FoodSite(self.next_id(), self, random.randrange(400), pos, 0))
         for _ in range(self.N_obstacles):
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(Obstacle(self.next_id(), self, pos))
@@ -181,8 +183,10 @@ class AntsWorld(Model):
     def evaporate_pheromone(self):
         for x in range(self.grid.width):
             for y in range(self.grid.height):
-                for k in self.pheromone_map[x][y].keys():
-                    self.pheromone_map[x][y][k] = max(0, self.pheromone_map[x][y][k] - 1)
+                for k in list(self.pheromone_map[x][y].keys()):
+                    self.pheromone_map[x][y][k] -= 1
+                    if self.pheromone_map[x][y][k] == 0:
+                        self.pheromone_map[x][y].pop(k)
 
     def step(self):
         start = time.time()

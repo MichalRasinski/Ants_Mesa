@@ -1,7 +1,5 @@
 # Ants_Mesa
 
-So far:
-
 Ants:
 - die if health or energy is zero
 - if they are inside the colony and energy is below 80 then they eat (energy=100)
@@ -18,12 +16,8 @@ Queens:
 - if they find an abundant food site then they start a new colony on the top of that  
 
 Anthills:
-- spawn ants if there is enough food: the probability of an ant getting born is expressed by the formula: 
-  
-    birth_prob = 0.05 * min(10, food_units // birth_food) + 0.2 + 0.075 * (reproduction_rate - 1),
-    
-    where, birth_food is ant_size * FOOD_SIZE_BIRTH_RATIO
-- spawns queens once in a while                 
+- spawn ants with some probability based on food supplies and reproduction rate 
+- spawns queens once in a while. More often with higher reproduction rate.
 - gives shelter to ants
 - stores food
 - releases ants if they smell 'food trail'
@@ -32,4 +26,3 @@ Anthills:
 FoodSites:
 - store food
 - regenerate food if they are renewable
-

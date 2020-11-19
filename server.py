@@ -7,7 +7,7 @@ from mesa.visualization.UserParam import UserSettableParameter
 
 import random
 
-width = height = 50
+width = height = 80
 MAX_N_OBJECTS = width * height / 3
 MAX_N_SPECIES = 5
 
@@ -19,19 +19,20 @@ def agent_portrayal(agent):
                      "Layer": 1,
                      "Color": colours[agent.species.id],
                      "r": agent.size * 0.5}
-    if isinstance(agent, Queen):
-        portrayal["Filled"] = "false"
-        portrayal["r"] = agent.size
-        # "text": agent.unique_id,
-        # "text_color": colours[agent.species.id]}
+        if isinstance(agent, Queen):
+            portrayal["Filled"] = "false"
+            portrayal["r"] = agent.size
+
+        # portrayal["text"] = agent.unique_id
         # if agent.forage:
-        #     portrayal["text_color"] = "brown"
+        #     portrayal["Color"] = "brown"
         # if agent.cargo:
-        #     portrayal["text_color"] = "green"
+        #     portrayal["Color"] = "green"
         # if agent.lost:
-        #     portrayal["text_color"] = "red"
+        #     portrayal["Color"] = "red"
         #     if agent.cargo:
-        #         portrayal["text_color"] = "yellow"
+        #         portrayal["Color"] = "yellow"
+
     elif type(agent) is Anthill:
         portrayal = {"Shape": "circle",
                      "Filled": "true",
@@ -66,7 +67,7 @@ model_params = {
     "width": width,
     "height": height,
     "food_spawn": UserSettableParameter("slider", "Food Site spawns every x-th turn",
-                                        value=10, min_value=1, max_value=20),
+                                        value=10, min_value=0, max_value=20),
     "species_text": UserSettableParameter('static_text', value="Below parameters controlling ant species")
 }
 for i in range(MAX_N_SPECIES):

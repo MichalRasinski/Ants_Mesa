@@ -17,12 +17,12 @@ class Ant(Agent):
         self.anthill = anthill
         self.size = species.ant_size
         self.health = self.size * SIZE_HEALTH_RATIO
-        self.pos = pos
         self.species = species
-        self.cargo = 0
-        self.last_pos = pos
-        self.energy = 100
+        self.pos = pos
         self.orient = None
+        self.last_pos = pos
+        self.cargo = 0
+        self.energy = 100
         self.forage = False
         self.lost = False
         self.food_trail_pheromone_strength = 0
@@ -60,6 +60,12 @@ class Ant(Agent):
         agent.health -= self.size * SIZE_DAMAGE_RATIO
 
     def go_forage(self):
+        if self.energy < 50:
+            self.forage = False
+            self.lost = True
+            self.turn_around()
+            return
+
         moves = self.find_straight_path_points("narrow")
         empty_cells = set(moves) & self.model.grid.empties
         if not empty_cells:

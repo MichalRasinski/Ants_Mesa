@@ -1,6 +1,5 @@
 from mesa import Agent
 import ants_model
-from itertools import product
 import numpy as np
 import random
 
@@ -10,7 +9,8 @@ SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 SELF_PHEROMONE_STRENGTH = 60  # strength of the self pheromone
 MAX_PHEROMONE_STRENGTH = 100  # maximum strength of a pheromone on a pheromone map
 ENERGY_TO_RETURN = 50  # when energy of foraging ant falls below ENERGY_TO_RETURN it tries to come back
-FOOD_TO_START_COLONY = 100
+FOOD_TO_START_COLONY = 100   # minimal number of food units in the food site for queen to start a colony
+
 
 class Ant(Agent):
     def __init__(self, unique_id, model, species, pos, anthill):

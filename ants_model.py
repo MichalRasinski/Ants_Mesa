@@ -16,7 +16,7 @@ QUEEN_SEASON_DURATION = 5  # duration of season in which queens are born
 QUEEN_SEASON_TURN = 60  # queen season happens every QUEEN_SEASON_TURN + QUEEN_SEASON_SPEC_DIFF * reproduction rate
 QUEEN_SEASON_SPEC_DIFF = 20
 FOOD_BIRTH_PROB = 0.02  # probability of an ant being born = FOOD_BIRTH_PROB * (
-# (self.food_units - minimum_food) // self.birth_food) * self.species.reproduction_rate
+# (self.food_units - minimum_food) // self.birth_food) * self.species.reproduction_rate, line 136
 ANTS_RELEASE_TURN = 2  # ants may be released every ANTS_RELEASE_TURN
 
 
@@ -33,6 +33,12 @@ def count_ants(model, species_id):
     species = list(filter(lambda x: x.id == species_id, model.species_list))[0]
     ants = [ah.worker_counter for ah in species.anthills]
     return sum(ants)
+
+
+def count_food(model, species_id):
+    species = list(filter(lambda x: x.id == species_id, model.species_list))[0]
+    food = [ah.food_units for ah in species.anthills]
+    return sum(food)
 
 
 class Species:
@@ -129,7 +135,7 @@ class Anthill(Agent):
             return
 
         if self.food_units > minimum_food:
-            queen_season = QUEEN_SEASON_TURN + QUEEN_SEASON_SPEC_DIFF * self.species.reproduction_rate
+            queen_season = QUEEN_SEASON_TURN + QUEEN_SEASON_SPEC_DIFF * (5 - self.species.reproduction_rate)
             if self.turn % queen_season < QUEEN_SEASON_DURATION and self.turn > queen_season:
                 self.make_ant("queen")
 
@@ -175,8 +181,12 @@ class AntsWorld(Model):
                     )
                 )
         species_id = [s.id for s in self.species_list]
-        self.data_collector = DataCollector(
+        self.ants_collector = DataCollector(
             model_reporters={"Species {}".format(s_id): (lambda id: (lambda model: count_ants(model, id)))(s_id)
+                             for s_id in species_id}
+        )
+        self.food_collector = DataCollector(
+            model_reporters={"Species {}".format(s_id): (lambda id: (lambda model: count_food(model, id)))(s_id)
                              for s_id in species_id}
         )
 
@@ -200,12 +210,9 @@ class AntsWorld(Model):
             self.pheromone_map[k][self.pheromone_map[k] > 0] -= 1
 
     def step(self):
-        self.data_collector.collect(self)
-
-        start = time.time()
+        self.ants_collector.collect(self)
+        self.food_collector.collect(self)
         self.schedule.step()
-        print("Schedule step:", time.time() - start)
-
         self.evaporate_pheromone()
         if self.food_spawn and self.schedule.steps % self.food_spawn == 0:
             pos = random.choice(list(self.grid.empties))

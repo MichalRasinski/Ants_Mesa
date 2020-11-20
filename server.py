@@ -62,7 +62,7 @@ def agent_portrayal(agent):
     return portrayal
 
 
-colours = ["brown", "blue", "green", "red", "yellow"]
+colours = ["brown", "blue", "green", "red", "orange"]
 labels = ["Species {}".format(s_id) for s_id in range(MAX_N_SPECIES)]
 
 model_params = {
@@ -91,12 +91,11 @@ chart_ants = PieChartModule(
     canvas_width=300,
     data_collector_name='ants_collector'
 )
-chart_food = ChartModule(
-    [{"Label": label, "Color": colour} for label, colour in zip(labels, colours)],
-    data_collector_name='food_collector'
-)
+# chart_food = ChartModule(
+#     [{"Label": label, "Color": colour} for label, colour in zip(labels, colours)],
+#     data_collector_name='food_collector'
+# )
 server = ModularServer(AntsWorld,
-                       # [map, chart_ants, chart_food],
                        [map, chart_ants],
                        "Ants World",
                        model_params)

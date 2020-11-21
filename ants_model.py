@@ -212,8 +212,13 @@ class AntsWorld(Model):
     def step(self):
         self.ants_collector.collect(self)
         self.food_collector.collect(self)
+        start = time.time()
         self.schedule.step()
+        print("schedule step = ", time.time()-start)
+        start = time.time()
         self.evaporate_pheromone()
+        print("evaporate_pheromone = ", time.time()-start)
+
         if self.food_spawn and self.schedule.steps % self.food_spawn == 0:
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(FoodSite(self.next_id(), self, random.randrange(FOOD_PER_FOOD_SITE), pos, r_rate=0))

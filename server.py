@@ -10,8 +10,8 @@ from mesa.visualization.UserParam import UserSettableParameter
 import random
 
 width = height = 50
-MAX_N_OBJECTS = width * height / 3
-MAX_N_SPECIES = 5
+MAX_N_OBJECTS = width * height // 3
+MAX_N_SPECIES = 4
 
 
 def agent_portrayal(agent):
@@ -25,16 +25,6 @@ def agent_portrayal(agent):
             portrayal["Filled"] = "false"
             portrayal["r"] = agent.size
 
-        # portrayal["text"] = agent.unique_id
-        # if agent.forage:
-        #     portrayal["Color"] = "brown"
-        # if agent.cargo:
-        #     portrayal["Color"] = "green"
-        # if agent.lost:
-        #     portrayal["Color"] = "red"
-        #     if agent.cargo:
-        #         portrayal["Color"] = "yellow"
-
     elif type(agent) is Anthill:
         portrayal = {"Shape": "circle",
                      "Filled": "true",
@@ -46,34 +36,35 @@ def agent_portrayal(agent):
 
     elif type(agent) is FoodSite:
         portrayal = {"Shape": "rect",
-                     "w": 1,
-                     "h": 1,
-                     "Filled": "true",
+                     "w": 0.9,
+                     "h": 0.9,
+                     "Filled": "True",
                      "Layer": 1,
-                     "Color": "Yellow"}
+                     "Color": "SandyBrown"}
     elif type(agent) is Obstacle:
         portrayal = {"Shape": "rect",
-                     "w": 1,
-                     "h": 1,
+                     "w": 0.9,
+                     "h": 0.9,
                      "Filled": "true",
                      "Layer": 1,
-                     "Color": "Black"}
+                     "Color": "Gray"}
 
     return portrayal
 
 
-colours = ["brown", "blue", "green", "red", "orange"]
+colours = ["red", "DarkOrchid", "Chartreuse", "aqua", "orange"]
 labels = ["Species {}".format(s_id) for s_id in range(MAX_N_SPECIES)]
 
 model_params = {
-    "N_food_sites": UserSettableParameter("slider", "Initial Number of Spots with Food",
+    "N_food_sites": UserSettableParameter("slider", "Spots with Food",
                                           value=10, min_value=0, max_value=100, step=10),
-    "N_obstacles": UserSettableParameter("number", "Number of Obstacles", 50, 0, MAX_N_OBJECTS),
+    "N_obstacles": UserSettableParameter("slider", "Obstacles", value=100, min_value=0,
+                                         max_value=MAX_N_OBJECTS, step=50),
     "width": width,
     "height": height,
-    "food_spawn": UserSettableParameter("slider", "Food Site spawns every x-th turn",
+    "food_spawn": UserSettableParameter("slider", "Food spawns every x-th turn",
                                         value=10, min_value=0, max_value=20),
-    "species_text": UserSettableParameter('static_text', value="Below parameters controlling ant species")
+    "species_text": UserSettableParameter('static_text', value="")
 }
 for i in range(MAX_N_SPECIES):
     model_params.update(

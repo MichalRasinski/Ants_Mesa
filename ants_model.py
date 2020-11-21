@@ -137,8 +137,8 @@ class Anthill(Agent):
         if self.food_units > minimum_food:
             queen_season = QUEEN_SEASON_TURN + QUEEN_SEASON_SPEC_DIFF * (5 - self.species.reproduction_rate)
             if self.turn % queen_season < QUEEN_SEASON_DURATION and self.turn > queen_season:
-                self.make_ant("queen")
-
+                # self.make_ant("queen")
+                pass
             birth_prob = FOOD_BIRTH_PROB * (
                     (self.food_units - minimum_food) // self.birth_food) * self.species.reproduction_rate
             if random.random() < birth_prob:

@@ -3,13 +3,14 @@ import ants_model
 import numpy as np
 import random
 
+
 ANT_SIZE_CARGO_RATIO = 5  # food_cargo = X * ant_size
 SIZE_HEALTH_RATIO = 2  # ant_health = X * ant_size
 SIZE_DAMAGE_RATIO = 1  # inflicted_damage = X * ant_size
 SELF_PHEROMONE_STRENGTH = 60  # strength of the self pheromone
 MAX_PHEROMONE_STRENGTH = 100  # maximum strength of a pheromone on a pheromone map
 ENERGY_TO_RETURN = 50  # when energy of foraging ant falls below ENERGY_TO_RETURN it tries to come back
-FOOD_TO_START_COLONY = 100   # minimal number of food units in the food site for queen to start a colony
+FOOD_TO_START_COLONY = 100  # minimal number of food units in the food site for queen to start a colony
 
 
 class Ant(Agent):
@@ -170,6 +171,7 @@ class Ant(Agent):
         self.forage = False
         self.model.grid.remove_agent(self)
         self.anthill.ants_inside.append(self)
+        self.eat()
 
     # so far an ant can eat only inside the anthill
     def eat(self):

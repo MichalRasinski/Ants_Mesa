@@ -137,8 +137,8 @@ class Anthill(Agent):
         if self.food_units > minimum_food:
             queen_season = QUEEN_SEASON_TURN + QUEEN_SEASON_SPEC_DIFF * (5 - self.species.reproduction_rate)
             if self.turn % queen_season < QUEEN_SEASON_DURATION and self.turn > queen_season:
-                # self.make_ant("queen")
-                pass
+                self.make_ant("queen")
+
             birth_prob = FOOD_BIRTH_PROB * (
                     (self.food_units - minimum_food) // self.birth_food) * self.species.reproduction_rate
             if random.random() < birth_prob:
@@ -161,12 +161,12 @@ class Anthill(Agent):
 
 
 class AntsWorld(Model):
-    def __init__(self, N_food_sites, N_obstacles, width, height, food_spawn, **kwargs):
+    def __init__(self, N_food_sites, N_obstacles, width, height, food_spawn, torus, **kwargs):
         super().__init__()
         self.food_spawn = food_spawn
         self.N_obstacles = N_obstacles
         self.N_food_sites = N_food_sites
-        self.grid = SingleGrid(width, height, False)
+        self.grid = SingleGrid(width, height, torus)
         self.schedule = RandomActivation(self)
         self.pheromone_map = defaultdict(lambda: np.zeros((height, width)))
         self.species_list = []

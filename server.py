@@ -64,6 +64,7 @@ model_params = {
     "height": height,
     "food_spawn": UserSettableParameter("slider", "Food spawns every x-th turn",
                                         value=10, min_value=0, max_value=20),
+    "torus": UserSettableParameter("checkbox", "Map is toroidal", value=True),
     "species_text": UserSettableParameter('static_text', value="")
 }
 for i in range(MAX_N_SPECIES):

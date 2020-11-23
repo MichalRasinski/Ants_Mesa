@@ -1,4 +1,5 @@
 # Ants_Mesa
+Simulation in Mesa representing fight for domination between species of ants.
 
 Ants:
 - die if health or energy is zero

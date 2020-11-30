@@ -1,11 +1,10 @@
 import ant_agent
-from mesa import Agent, Model
+from mesa import Model
 from mesa.space import *
-from mesa.time import BaseScheduler, RandomActivation
+from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 from collections import defaultdict
 import random
-import time
 import numpy as np
 
 FOOD_SIZE_BIRTH_RATIO = 2  # food required to produce a new ant = FOOD_SIZE_BIRTH_RATIO * ant_size
@@ -130,7 +129,7 @@ class Anthill(Agent):
         self.turn += 1
         minimum_food = self.birth_food * 2 + self.worker_counter * self.species.ant_size
 
-        if self.food_units < minimum_food and self.worker_counter == 0:
+        if self.food_units <= minimum_food and self.worker_counter == 0:
             self.destroy()
             return
 
@@ -170,6 +169,7 @@ class AntsWorld(Model):
         self.schedule = RandomActivation(self)
         self.pheromone_map = defaultdict(lambda: np.zeros((height, width)))
         self.species_list = []
+        self.running = True
 
         for i in range(len(list(kwargs)) // 3):
             if kwargs["include_{}".format(i)]:
@@ -185,15 +185,12 @@ class AntsWorld(Model):
             model_reporters={"Species {}".format(s_id): (lambda id: (lambda model: count_ants(model, id)))(s_id)
                              for s_id in species_id}
         )
-        self.food_collector = DataCollector(
-            model_reporters={"Species {}".format(s_id): (lambda id: (lambda model: count_food(model, id)))(s_id)
-                             for s_id in species_id}
-        )
 
         # Create agents
         for species in self.species_list:
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(Anthill(self.next_id(), self, species, pos))
+
         for _ in range(self.N_food_sites):
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(FoodSite(self.next_id(), self, random.randrange(FOOD_PER_FOOD_SITE), pos, 0))
@@ -201,9 +198,9 @@ class AntsWorld(Model):
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(Obstacle(self.next_id(), self, pos))
 
-    def spawn_object(self, object):
-        self.schedule.add(object)
-        self.grid.place_agent(object, object.pos)
+    def spawn_object(self, obj):
+        self.schedule.add(obj)
+        self.grid.place_agent(obj, obj.pos)
 
     def evaporate_pheromone(self):
         for k in self.pheromone_map.keys():
@@ -211,14 +208,14 @@ class AntsWorld(Model):
 
     def step(self):
         self.ants_collector.collect(self)
-        self.food_collector.collect(self)
-        start = time.time()
         self.schedule.step()
-        print("schedule step = ", time.time()-start)
-        start = time.time()
         self.evaporate_pheromone()
-        print("evaporate_pheromone = ", time.time()-start)
 
         if self.food_spawn and self.schedule.steps % self.food_spawn == 0:
             pos = random.choice(list(self.grid.empties))
             self.spawn_object(FoodSite(self.next_id(), self, random.randrange(FOOD_PER_FOOD_SITE), pos, r_rate=0))
+
+        anthills = np.array([len(species.anthills) for species in self.species_list])
+        if np.sum(anthills > 0) <= 1:
+            self.running = False
+

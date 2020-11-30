@@ -2,12 +2,9 @@ from ants_model import *
 from ant_agent import *
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
-from mesa.visualization.modules import ChartModule
 from mesa.visualization.modules import PieChartModule
 
 from mesa.visualization.UserParam import UserSettableParameter
-
-import random
 
 width = height = 50
 MAX_N_OBJECTS = width * height // 3
@@ -40,13 +37,14 @@ def agent_portrayal(agent):
                      "h": 0.9,
                      "Filled": "True",
                      "Layer": 1,
+                     "text": "{0:.0f}".format(agent.food_units),
                      "Color": "SandyBrown"}
     elif type(agent) is Obstacle:
         portrayal = {"Shape": "rect",
                      "w": 0.9,
                      "h": 0.9,
                      "Filled": "true",
-                     "Layer": 1,
+                     "Layer": 0,
                      "Color": "Gray"}
 
     return portrayal
@@ -76,19 +74,16 @@ for i in range(MAX_N_SPECIES):
     model_params.update({"ant_size_{}".format(i): UserSettableParameter(
         "slider", "Ant Size of the Species {}".format(i), value=3, min_value=1, max_value=5)})
 
-map = CanvasGrid(agent_portrayal, width, height, 600, 600)
+world = CanvasGrid(agent_portrayal, width, height, 600, 600)
 chart_ants = PieChartModule(
     [{"Label": label, "Color": colour} for label, colour in zip(labels, colours)],
     canvas_height=250,
     canvas_width=300,
     data_collector_name='ants_collector'
 )
-# chart_food = ChartModule(
-#     [{"Label": label, "Color": colour} for label, colour in zip(labels, colours)],
-#     data_collector_name='food_collector'
-# )
+
 server = ModularServer(AntsWorld,
-                       [map, chart_ants],
+                       [world, chart_ants],
                        "Ants World",
                        model_params)
-server.port = 8521  # The default
+server.port = 8521
